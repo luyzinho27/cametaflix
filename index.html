@@ -139,6 +139,7 @@
                     <button id="add-content-btn" class="btn-primary">Adicionar Conteúdo</button>
                     <button id="view-users-btn" class="btn-secondary">Ver Usuários</button>
                     <button id="manage-content-btn" class="btn-secondary">Gerenciar Conteúdo</button>
+                    <button id="upload-content-btn" class="btn-secondary">Upload para Nitroflare</button>
                 </div>
                 
                 <div id="add-content-form" class="form-container hidden">
@@ -173,6 +174,47 @@
                         <button type="submit" class="btn-primary">Adicionar Conteúdo</button>
                     </form>
                 </div>
+
+                <!-- Adicione esta seção no admin-panel, após o forms existentes -->
+<div id="upload-section" class="form-container hidden">
+    <h3>Upload para Nitroflare</h3>
+    <form id="upload-form">
+        <div class="input-group">
+            <input type="file" id="video-file" accept="video/*" required>
+            <label for="video-file">Selecionar Arquivo de Vídeo</label>
+        </div>
+        <div class="input-group">
+            <input type="text" id="upload-title" required>
+            <label for="upload-title">Título do Conteúdo</label>
+        </div>
+        <div class="input-group">
+            <textarea id="upload-description" required></textarea>
+            <label for="upload-description">Descrição</label>
+        </div>
+        <div class="input-group">
+            <input type="text" id="upload-thumbnail" required 
+                   placeholder="https://exemplo.com/imagem.jpg">
+            <label for="upload-thumbnail">URL da Thumbnail</label>
+        </div>
+        <div class="input-group">
+            <select id="upload-category" required>
+                <option value="">Selecione uma categoria</option>
+                <option value="filmes">Filme</option>
+                <option value="series">Série</option>
+            </select>
+            <label for="upload-category">Categoria</label>
+        </div>
+        <div class="upload-progress hidden">
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            <span class="progress-text">0%</span>
+        </div>
+        <button type="submit" class="btn-primary" id="upload-btn">
+            Fazer Upload e Adicionar
+        </button>
+    </form>
+</div>
 
                 <div id="users-list" class="users-list hidden">
                     <h3>Usuários Cadastrados</h3>
@@ -228,3 +270,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+

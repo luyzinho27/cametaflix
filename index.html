@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CametaFlix</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="login-screen" class="screen active">
+        <div class="login-container">
+            <div class="logo">
+                <h1>CametaFlix</h1>
+            </div>
+            <form id="login-form">
+                <h2>Entrar</h2>
+                <div class="input-group">
+                    <input type="email" id="login-email" required>
+                    <label for="login-email">E-mail</label>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="login-password" required>
+                    <label for="login-password">Senha</label>
+                </div>
+                <button type="submit" class="btn-primary">Entrar</button>
+                <div class="form-footer">
+                    <p>Novo por aqui? <a href="#" id="go-to-register">Cadastre-se agora</a>.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tela de Cadastro -->
+    <div id="register-screen" class="screen">
+        <div class="register-container">
+            <div class="logo">
+                <h1>CametaFlix</h1>
+            </div>
+            <form id="register-form">
+                <h2>Criar Conta</h2>
+                <div class="input-group">
+                    <input type="email" id="register-email" required>
+                    <label for="register-email">E-mail</label>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="register-password" required>
+                    <label for="register-password">Senha</label>
+                </div>
+                <button type="submit" class="btn-primary">Cadastrar</button>
+                <div class="form-footer">
+                    <p>Já tem uma conta? <a href="#" id="go-to-login">Faça login</a>.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tela Principal -->
+    <div id="main-screen" class="screen">
+        <header>
+            <nav class="navbar">
+                <div class="nav-brand">
+                    <h1>CametaFlix</h1>
+                </div>
+                <div class="nav-links">
+                    <a href="#" id="home-link" class="nav-link active">Início</a>
+                    <a href="#" id="series-link" class="nav-link">Séries</a>
+                    <a href="#" id="movies-link" class="nav-link">Filmes</a>
+                    <a href="#" id="admin-panel-link" class="nav-link hidden">Painel Admin</a>
+                </div>
+                <div class="nav-user">
+                    <span id="user-email"></span>
+                    <button id="logout-btn" class="btn-secondary">Sair</button>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Seção de Destaque -->
+            <section id="featured" class="featured-section">
+                <div class="featured-content">
+                    <h2 id="featured-title"></h2>
+                    <p id="featured-description"></p>
+                    <div class="featured-actions">
+                        <button class="btn-primary" id="play-featured">
+                            <span>▶</span> Assistir
+                        </button>
+                        <button class="btn-secondary" id="info-featured">
+                            <span>ⓘ</span> Mais Informações
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção de Conteúdo -->
+            <section class="content-section">
+                <h3 class="section-title" id="section-title">Recomendados para Você</h3>
+                <div id="content-grid" class="content-grid">
+                    <!-- Conteúdo será carregado dinamicamente -->
+                </div>
+            </section>
+
+            <!-- Modal de Vídeo -->
+            <div id="video-modal" class="modal hidden">
+                <div class="modal-content">
+                    <span class="close-modal">&times;</span>
+                    <div class="video-container">
+                        <video id="video-player" controls>
+                            Seu navegador não suporta a tag de vídeo.
+                        </video>
+                    </div>
+                    <div class="video-info">
+                        <h3 id="video-title"></h3>
+                        <p id="video-description"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Administração -->
+            <div id="admin-panel" class="admin-panel hidden">
+                <h2>Painel de Administração</h2>
+                <div class="admin-actions">
+                    <button id="add-content-btn" class="btn-primary">Adicionar Conteúdo</button>
+                    <button id="view-users-btn" class="btn-secondary">Ver Usuários</button>
+                </div>
+                
+                <div id="add-content-form" class="form-container hidden">
+                    <h3>Adicionar Novo Conteúdo</h3>
+                    <form id="content-form">
+                        <div class="input-group">
+                            <input type="text" id="content-title" required>
+                            <label for="content-title">Título</label>
+                        </div>
+                        <div class="input-group">
+                            <textarea id="content-description" required></textarea>
+                            <label for="content-description">Descrição</label>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="content-thumbnail" required>
+                            <label for="content-thumbnail">URL da Thumbnail</label>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="content-video-url" required>
+                            <label for="content-video-url">URL do Vídeo (Nitroflare)</label>
+                        </div>
+                        <div class="input-group">
+                            <select id="content-category" required>
+                                <option value="filmes">Filme</option>
+                                <option value="series">Série</option>
+                            </select>
+                            <label for="content-category">Categoria</label>
+                        </div>
+                        <button type="submit" class="btn-primary">Adicionar Conteúdo</button>
+                    </form>
+                </div>
+
+                <div id="users-list" class="users-list hidden">
+                    <h3>Usuários Cadastrados</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>E-mail</th>
+                                <th>Tipo</th>
+                                <th>Data de Cadastro</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Usuários serão carregados aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

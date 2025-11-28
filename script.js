@@ -1,13 +1,16 @@
 // script.js
 // Configuração do Firebase
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_PROJETO.firebaseapp.com",
-    projectId: "SEU_PROJETO_ID",
-    storageBucket: "SEU_PROJETO.appspot.com",
-    messagingSenderId: "SEU_SENDER_ID",
-    appId: "SEU_APP_ID"
+  apiKey: "AIzaSyBLPLXCc6JRfP43xDjL2j-GWwtMYLLY3Gk",
+  authDomain: "cametaflix-5f7a1.firebaseapp.com",
+  projectId: "cametaflix-5f7a1",
+  storageBucket: "cametaflix-5f7a1.firebasestorage.app",
+  messagingSenderId: "369794733568",
+  appId: "1:369794733568:web:641ddcd55a5669a24ceae5"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
@@ -391,4 +394,5 @@ function filterContentByCategory(category) {
         contentItem.addEventListener('click', () => playContent(content));
         contentGrid.appendChild(contentItem);
     });
+
 }

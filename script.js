@@ -9,9 +9,6 @@ const firebaseConfig = {
   appId: "1:369794733568:web:641ddcd55a5669a24ceae5"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -39,19 +36,30 @@ const addContentBtn = document.getElementById('add-content-btn');
 const addContentForm = document.getElementById('add-content-form');
 const contentForm = document.getElementById('content-form');
 const viewUsersBtn = document.getElementById('view-users-btn');
+const manageContentBtn = document.getElementById('manage-content-btn');
 const usersList = document.getElementById('users-list');
+const manageContent = document.getElementById('manage-content');
 const usersTableBody = document.getElementById('users-table-body');
+const contentTableBody = document.getElementById('content-table-body');
 const featuredSection = document.getElementById('featured');
 const featuredTitle = document.getElementById('featured-title');
 const featuredDescription = document.getElementById('featured-description');
 const playFeaturedBtn = document.getElementById('play-featured');
 const infoFeaturedBtn = document.getElementById('info-featured');
+const infoModal = document.getElementById('info-modal');
+const closeInfoModal = document.querySelector('.close-info-modal');
+const infoTitle = document.getElementById('info-title');
+const infoDescription = document.getElementById('info-description');
+const infoCategory = document.getElementById('info-category');
+const infoDate = document.getElementById('info-date');
+const loading = document.getElementById('loading');
 
 // Variáveis globais
 let currentUser = null;
 let isAdmin = false;
 let currentContent = [];
 let featuredContent = null;
+let allUsers = [];
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
@@ -61,22 +69,24 @@ goToRegister.addEventListener('click', () => switchScreen('register'));
 goToLogin.addEventListener('click', () => switchScreen('login'));
 logoutBtn.addEventListener('click', handleLogout);
 closeModal.addEventListener('click', () => videoModal.classList.add('hidden'));
-addContentBtn.addEventListener('click', () => {
-    addContentForm.classList.toggle('hidden');
-    usersList.classList.add('hidden');
-});
-viewUsersBtn.addEventListener('click', () => {
-    usersList.classList.toggle('hidden');
-    addContentForm.classList.add('hidden');
-    if (!usersList.classList.contains('hidden')) {
-        loadUsers();
-    }
-});
+closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
+addContentBtn.addEventListener('click', () => toggleAdminSection('add-content'));
+viewUsersBtn.addEventListener('click', () => toggleAdminSection('users'));
+manageContentBtn.addEventListener('click', () => toggleAdminSection('manage-content'));
 contentForm.addEventListener('submit', handleAddContent);
 playFeaturedBtn.addEventListener('click', playFeaturedContent);
+infoFeaturedBtn.addEventListener('click', showFeaturedInfo);
+
+// Fechar modal ao clicar fora
+window.addEventListener('click', (e) => {
+    if (e.target === videoModal) videoModal.classList.add('hidden');
+    if (e.target === infoModal) infoModal.classList.add('hidden');
+});
 
 // Inicialização da aplicação
 function initApp() {
+    showLoading();
+    
     // Observador de estado de autenticação
     auth.onAuthStateChanged(user => {
         if (user) {
@@ -89,6 +99,7 @@ function initApp() {
             currentUser = null;
             switchScreen('login');
         }
+        hideLoading();
     });
 
     // Navbar scroll effect
@@ -100,11 +111,34 @@ function initApp() {
             navbar.classList.remove('scrolled');
         }
     });
+
+    // Navegação entre seções
+    setupNavigation();
+}
+
+// Configurar navegação
+function setupNavigation() {
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remover classe active de todos os links
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            
+            // Adicionar classe active ao link clicado
+            this.classList.add('active');
+            
+            const target = this.id;
+            handleNavigation(target);
+        });
+    });
 }
 
 // Funções de autenticação
 function handleLogin(e) {
     e.preventDefault();
+    showLoading();
+    
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
 
@@ -113,12 +147,15 @@ function handleLogin(e) {
             showMessage('Login realizado com sucesso!', 'success');
         })
         .catch(error => {
+            hideLoading();
             showMessage('Erro no login: ' + error.message, 'error');
         });
 }
 
 function handleRegister(e) {
     e.preventDefault();
+    showLoading();
+    
     const email = document.getElementById('register-email').value;
     const password = document.getElementById('register-password').value;
 
@@ -129,26 +166,37 @@ function handleRegister(e) {
             // Verificar se é o primeiro usuário (admin)
             return db.collection('users').get().then(snapshot => {
                 const userRole = snapshot.empty ? 'admin' : 'user';
-                
-                // Salvar informações do usuário no Firestore
-                return db.collection('users').doc(user.uid).set({
+                const userData = {
                     email: user.email,
                     role: userRole,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // Salvar informações do usuário no Firestore
+                return db.collection('users').doc(user.uid).set(userData);
             });
         })
         .then(() => {
             showMessage('Cadastro realizado com sucesso!', 'success');
         })
         .catch(error => {
+            hideLoading();
             showMessage('Erro no cadastro: ' + error.message, 'error');
         });
 }
 
 function handleLogout() {
-    auth.signOut();
-    showMessage('Logout realizado com sucesso!', 'success');
+    showLoading();
+    auth.signOut()
+        .then(() => {
+            showMessage('Logout realizado com sucesso!', 'success');
+            hideLoading();
+        })
+        .catch(error => {
+            showMessage('Erro ao fazer logout: ' + error.message, 'error');
+            hideLoading();
+        });
 }
 
 // Verificar papel do usuário
@@ -167,6 +215,11 @@ function checkUserRole(uid) {
                     adminPanel.classList.add('hidden');
                     showMessage('Login realizado com sucesso!', 'success');
                 }
+                
+                // Atualizar último login
+                db.collection('users').doc(uid).update({
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                });
             }
         })
         .catch(error => {
@@ -189,42 +242,144 @@ function switchScreen(screen) {
     }
 }
 
+// Navegação principal
+function handleNavigation(target) {
+    adminPanel.classList.add('hidden');
+    
+    switch(target) {
+        case 'home-link':
+            document.getElementById('section-title').textContent = 'Recomendados para Você';
+            loadContent();
+            break;
+        case 'movies-link':
+            document.getElementById('section-title').textContent = 'Filmes';
+            filterContentByCategory('filmes');
+            break;
+        case 'series-link':
+            document.getElementById('section-title').textContent = 'Séries';
+            filterContentByCategory('series');
+            break;
+        case 'admin-panel-link':
+            adminPanel.classList.remove('hidden');
+            toggleAdminSection('add-content');
+            break;
+    }
+}
+
+// Alternar seções do admin
+function toggleAdminSection(section) {
+    // Esconder todas as seções
+    addContentForm.classList.add('hidden');
+    usersList.classList.add('hidden');
+    manageContent.classList.add('hidden');
+    
+    // Mostrar a seção selecionada
+    switch(section) {
+        case 'add-content':
+            addContentForm.classList.remove('hidden');
+            break;
+        case 'users':
+            usersList.classList.remove('hidden');
+            loadUsers();
+            break;
+        case 'manage-content':
+            manageContent.classList.remove('hidden');
+            loadContentForManagement();
+            break;
+    }
+}
+
 // Carregar conteúdo
 function loadContent() {
-    db.collection('content').get()
+    showLoading();
+    
+    db.collection('content').orderBy('addedAt', 'desc').get()
         .then(querySnapshot => {
             currentContent = [];
             contentGrid.innerHTML = '';
             
-            querySnapshot.forEach(doc => {
-                const content = doc.data();
-                content.id = doc.id;
-                currentContent.push(content);
-                
-                // Criar elemento de conteúdo
-                const contentItem = document.createElement('div');
-                contentItem.className = 'content-item';
-                contentItem.innerHTML = `
-                    <img src="${content.thumbnail}" alt="${content.title}">
-                    <div class="content-info">
-                        <h4>${content.title}</h4>
-                        <p>${content.description.substring(0, 100)}...</p>
+            if (querySnapshot.empty) {
+                contentGrid.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Nenhum conteúdo disponível</h3>
+                        <p>Adicione conteúdo através do painel de administração.</p>
                     </div>
                 `;
+                hideLoading();
+                return;
+            }
+            
+            querySnapshot.forEach(doc => {
+                const content = {
+                    id: doc.id,
+                    ...doc.data()
+                };
+                currentContent.push(content);
                 
-                contentItem.addEventListener('click', () => playContent(content));
-                contentGrid.appendChild(contentItem);
+                createContentItem(content);
             });
             
-            // Definir conteúdo em destaque (primeiro da lista ou aleatório)
+            // Definir conteúdo em destaque
             if (currentContent.length > 0) {
                 featuredContent = currentContent[0];
                 updateFeaturedContent();
             }
+            
+            hideLoading();
         })
         .catch(error => {
+            hideLoading();
             console.error('Erro ao carregar conteúdo:', error);
+            showMessage('Erro ao carregar conteúdo: ' + error.message, 'error');
         });
+}
+
+// Criar item de conteúdo
+function createContentItem(content) {
+    const contentItem = document.createElement('div');
+    contentItem.className = 'content-item';
+    contentItem.innerHTML = `
+        <img src="${content.thumbnail}" alt="${content.title}" onerror="this.src='https://via.placeholder.com/300x450/333333/FFFFFF?text=Imagem+Não+Disponível'">
+        <div class="content-info">
+            <h4>${content.title}</h4>
+            <p>${content.description.substring(0, 100)}...</p>
+        </div>
+    `;
+    
+    contentItem.addEventListener('click', () => showContentOptions(content));
+    contentGrid.appendChild(contentItem);
+}
+
+// Mostrar opções do conteúdo
+function showContentOptions(content) {
+    if (isAdmin) {
+        // Para admin, mostrar modal de opções
+        showAdminContentOptions(content);
+    } else {
+        // Para usuário normal, mostrar informações
+        showContentInfo(content);
+    }
+}
+
+// Mostrar informações do conteúdo
+function showContentInfo(content) {
+    infoTitle.textContent = content.title;
+    infoDescription.textContent = content.description;
+    infoCategory.textContent = content.category === 'filmes' ? 'Filme' : 'Série';
+    infoDate.textContent = content.addedAt ? content.addedAt.toDate().toLocaleDateString('pt-BR') : 'Data não disponível';
+    
+    infoModal.classList.remove('hidden');
+}
+
+// Opções de conteúdo para admin
+function showAdminContentOptions(content) {
+    const play = confirm(`O que você deseja fazer com "${content.title}"?\n\nClique em OK para assistir ou em Cancelar para ver informações.`);
+    
+    if (play) {
+        playContent(content);
+    } else {
+        showContentInfo(content);
+    }
 }
 
 // Atualizar conteúdo em destaque
@@ -240,6 +395,17 @@ function updateFeaturedContent() {
 function playFeaturedContent() {
     if (featuredContent) {
         playContent(featuredContent);
+    } else {
+        showMessage('Nenhum conteúdo em destaque disponível', 'warning');
+    }
+}
+
+// Mostrar informações do destaque
+function showFeaturedInfo() {
+    if (featuredContent) {
+        showContentInfo(featuredContent);
+    } else {
+        showMessage('Nenhum conteúdo em destaque disponível', 'warning');
     }
 }
 
@@ -248,20 +414,33 @@ function playContent(content) {
     videoTitle.textContent = content.title;
     videoDescription.textContent = content.description;
     
-    // Aqui você precisaria adaptar para obter o vídeo do Nitroflare
-    // Por enquanto, usaremos um vídeo de exemplo
-    videoPlayer.src = content.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+    // Verificar se é uma URL do Nitroflare ou URL direta de vídeo
+    let videoSource = content.videoUrl;
     
+    // Se for URL do Nitroflare, precisaríamos de uma solução específica
+    // Por enquanto, usamos URLs diretas de vídeo para demonstração
+    if (content.videoUrl.includes('nitroflare')) {
+        showMessage('Conteúdo do Nitroflare - Integração específica necessária', 'warning');
+        // Aqui você implementaria a lógica específica para Nitroflare
+        videoSource = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+    }
+    
+    videoPlayer.src = videoSource;
     videoModal.classList.remove('hidden');
-    videoPlayer.play();
+    videoPlayer.play().catch(e => {
+        console.error('Erro ao reproduzir vídeo:', e);
+        showMessage('Erro ao reproduzir vídeo. Verifique a URL.', 'error');
+    });
 }
 
 // Adicionar conteúdo (admin)
 function handleAddContent(e) {
     e.preventDefault();
+    showLoading();
     
     if (!isAdmin) {
         showMessage('Apenas administradores podem adicionar conteúdo.', 'error');
+        hideLoading();
         return;
     }
     
@@ -271,7 +450,14 @@ function handleAddContent(e) {
     const videoUrl = document.getElementById('content-video-url').value;
     const category = document.getElementById('content-category').value;
     
-    db.collection('content').add({
+    // Validação básica
+    if (!title || !description || !thumbnail || !videoUrl || !category) {
+        showMessage('Por favor, preencha todos os campos.', 'error');
+        hideLoading();
+        return;
+    }
+    
+    const contentData = {
         title,
         description,
         thumbnail,
@@ -279,13 +465,17 @@ function handleAddContent(e) {
         category,
         addedBy: currentUser.uid,
         addedAt: firebase.firestore.FieldValue.serverTimestamp()
-    })
+    };
+    
+    db.collection('content').add(contentData)
     .then(() => {
         showMessage('Conteúdo adicionado com sucesso!', 'success');
         contentForm.reset();
         loadContent();
+        hideLoading();
     })
     .catch(error => {
+        hideLoading();
         showMessage('Erro ao adicionar conteúdo: ' + error.message, 'error');
     });
 }
@@ -293,27 +483,174 @@ function handleAddContent(e) {
 // Carregar lista de usuários (admin)
 function loadUsers() {
     if (!isAdmin) return;
+    showLoading();
     
-    db.collection('users').get()
+    db.collection('users').orderBy('createdAt', 'desc').get()
         .then(querySnapshot => {
             usersTableBody.innerHTML = '';
+            allUsers = [];
+            
+            if (querySnapshot.empty) {
+                usersTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum usuário cadastrado</td></tr>';
+                hideLoading();
+                return;
+            }
             
             querySnapshot.forEach(doc => {
-                const user = doc.data();
-                const row = document.createElement('tr');
+                const user = {
+                    id: doc.id,
+                    ...doc.data()
+                };
+                allUsers.push(user);
                 
+                const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${user.email}</td>
                     <td>${user.role}</td>
                     <td>${user.createdAt ? user.createdAt.toDate().toLocaleDateString('pt-BR') : 'N/A'}</td>
+                    <td class="action-buttons">
+                        ${user.role !== 'admin' ? `<button class="btn-danger btn-small" onclick="deleteUser('${user.id}')">Excluir</button>` : '<span class="text-secondary">Admin</span>'}
+                    </td>
                 `;
                 
                 usersTableBody.appendChild(row);
             });
+            hideLoading();
         })
         .catch(error => {
+            hideLoading();
             console.error('Erro ao carregar usuários:', error);
+            showMessage('Erro ao carregar usuários: ' + error.message, 'error');
         });
+}
+
+// Carregar conteúdo para gerenciamento (admin)
+function loadContentForManagement() {
+    if (!isAdmin) return;
+    showLoading();
+    
+    db.collection('content').orderBy('addedAt', 'desc').get()
+        .then(querySnapshot => {
+            contentTableBody.innerHTML = '';
+            
+            if (querySnapshot.empty) {
+                contentTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum conteúdo cadastrado</td></tr>';
+                hideLoading();
+                return;
+            }
+            
+            querySnapshot.forEach(doc => {
+                const content = {
+                    id: doc.id,
+                    ...doc.data()
+                };
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${content.title}</td>
+                    <td>${content.category === 'filmes' ? 'Filme' : 'Série'}</td>
+                    <td>${content.addedAt ? content.addedAt.toDate().toLocaleDateString('pt-BR') : 'N/A'}</td>
+                    <td class="action-buttons">
+                        <button class="btn-secondary btn-small" onclick="editContent('${content.id}')">Editar</button>
+                        <button class="btn-danger btn-small" onclick="deleteContent('${content.id}')">Excluir</button>
+                    </td>
+                `;
+                
+                contentTableBody.appendChild(row);
+            });
+            hideLoading();
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Erro ao carregar conteúdo:', error);
+            showMessage('Erro ao carregar conteúdo: ' + error.message, 'error');
+        });
+}
+
+// Filtrar conteúdo por categoria
+function filterContentByCategory(category) {
+    contentGrid.innerHTML = '';
+    
+    const filteredContent = currentContent.filter(item => item.category === category);
+    
+    if (filteredContent.length === 0) {
+        contentGrid.innerHTML = `
+            <div class="empty-state">
+                <h3>Nenhum conteúdo encontrado</h3>
+                <p>Não há ${category === 'filmes' ? 'filmes' : 'séries'} disponíveis no momento.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    filteredContent.forEach(content => {
+        createContentItem(content);
+    });
+}
+
+// Funções de administração
+function deleteUser(userId) {
+    if (!isAdmin) return;
+    
+    if (confirm('Tem certeza que deseja excluir este usuário?')) {
+        showLoading();
+        
+        // Não permitir excluir o próprio usuário admin
+        if (userId === currentUser.uid) {
+            hideLoading();
+            showMessage('Você não pode excluir sua própria conta.', 'error');
+            return;
+        }
+        
+        db.collection('users').doc(userId).delete()
+            .then(() => {
+                showMessage('Usuário excluído com sucesso!', 'success');
+                loadUsers();
+            })
+            .catch(error => {
+                hideLoading();
+                showMessage('Erro ao excluir usuário: ' + error.message, 'error');
+            });
+    }
+}
+
+function deleteContent(contentId) {
+    if (!isAdmin) return;
+    
+    if (confirm('Tem certeza que deseja excluir este conteúdo?')) {
+        showLoading();
+        
+        db.collection('content').doc(contentId).delete()
+            .then(() => {
+                showMessage('Conteúdo excluído com sucesso!', 'success');
+                loadContentForManagement();
+                loadContent(); // Recarregar conteúdo principal também
+            })
+            .catch(error => {
+                hideLoading();
+                showMessage('Erro ao excluir conteúdo: ' + error.message, 'error');
+            });
+    }
+}
+
+function editContent(contentId) {
+    // Implementação básica de edição - poderia ser expandida
+    const content = currentContent.find(c => c.id === contentId);
+    if (content) {
+        document.getElementById('content-title').value = content.title;
+        document.getElementById('content-description').value = content.description;
+        document.getElementById('content-thumbnail').value = content.thumbnail;
+        document.getElementById('content-video-url').value = content.videoUrl;
+        document.getElementById('content-category').value = content.category;
+        
+        // Scroll para o formulário
+        addContentForm.classList.remove('hidden');
+        usersList.classList.add('hidden');
+        manageContent.classList.add('hidden');
+        addContentForm.scrollIntoView({ behavior: 'smooth' });
+        
+        showMessage('Preencha os campos e clique em "Adicionar Conteúdo" para atualizar. Nota: Esta é uma demonstração - em produção, implemente a edição completa.', 'warning');
+    }
 }
 
 // Mostrar mensagens
@@ -332,67 +669,33 @@ function showMessage(message, type) {
     
     // Remove a mensagem após 5 segundos
     setTimeout(() => {
-        messageDiv.remove();
+        if (messageDiv.parentNode) {
+            messageDiv.remove();
+        }
     }, 5000);
 }
 
-// Navegação
-document.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        // Remover classe active de todos os links
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        
-        // Adicionar classe active ao link clicado
-        this.classList.add('active');
-        
-        const target = this.id;
-        
-        if (target === 'admin-panel-link') {
-            adminPanel.classList.toggle('hidden');
-        } else {
-            adminPanel.classList.add('hidden');
-            
-            // Filtrar conteúdo por categoria
-            if (target === 'home-link') {
-                document.getElementById('section-title').textContent = 'Recomendados para Você';
-                loadContent();
-            } else if (target === 'movies-link') {
-                document.getElementById('section-title').textContent = 'Filmes';
-                filterContentByCategory('filmes');
-            } else if (target === 'series-link') {
-                document.getElementById('section-title').textContent = 'Séries';
-                filterContentByCategory('series');
-            }
-        }
-    });
-});
-
-// Filtrar conteúdo por categoria
-function filterContentByCategory(category) {
-    contentGrid.innerHTML = '';
-    
-    const filteredContent = currentContent.filter(item => item.category === category);
-    
-    if (filteredContent.length === 0) {
-        contentGrid.innerHTML = '<p>Nenhum conteúdo encontrado nesta categoria.</p>';
-        return;
-    }
-    
-    filteredContent.forEach(content => {
-        const contentItem = document.createElement('div');
-        contentItem.className = 'content-item';
-        contentItem.innerHTML = `
-            <img src="${content.thumbnail}" alt="${content.title}">
-            <div class="content-info">
-                <h4>${content.title}</h4>
-                <p>${content.description.substring(0, 100)}...</p>
-            </div>
-        `;
-        
-        contentItem.addEventListener('click', () => playContent(content));
-        contentGrid.appendChild(contentItem);
-    });
-
+// Loading functions
+function showLoading() {
+    loading.classList.remove('hidden');
 }
+
+function hideLoading() {
+    loading.classList.add('hidden');
+}
+
+// Inicializar dados de exemplo se necessário
+function initializeSampleData() {
+    // Esta função pode ser usada para adicionar dados de exemplo
+    // Remova ou adapte conforme necessário
+}
+
+// Prevenir envio de formulário com Enter
+document.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        const target = e.target;
+        if (target.form && target.type !== 'textarea') {
+            e.preventDefault();
+        }
+    }
+});

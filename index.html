@@ -80,11 +80,11 @@
             <!-- Seção de Destaque -->
             <section id="featured" class="featured-section">
                 <div class="featured-content">
-                    <h2 id="featured-title"></h2>
-                    <p id="featured-description"></p>
+                    <h2 id="featured-title">Bem-vindo ao CametaFlix</h2>
+                    <p id="featured-description">A melhor plataforma de streaming com conteúdo exclusivo.</p>
                     <div class="featured-actions">
                         <button class="btn-primary" id="play-featured">
-                            <span>▶</span> Assistir
+                            <span>▶</span> Explorar
                         </button>
                         <button class="btn-secondary" id="info-featured">
                             <span>ⓘ</span> Mais Informações
@@ -117,12 +117,28 @@
                 </div>
             </div>
 
+            <!-- Modal de Informações -->
+            <div id="info-modal" class="modal hidden">
+                <div class="modal-content">
+                    <span class="close-info-modal">&times;</span>
+                    <div class="info-content">
+                        <h3 id="info-title"></h3>
+                        <p id="info-description"></p>
+                        <div class="info-details">
+                            <p><strong>Categoria:</strong> <span id="info-category"></span></p>
+                            <p><strong>Adicionado em:</strong> <span id="info-date"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Painel de Administração -->
             <div id="admin-panel" class="admin-panel hidden">
                 <h2>Painel de Administração</h2>
                 <div class="admin-actions">
                     <button id="add-content-btn" class="btn-primary">Adicionar Conteúdo</button>
                     <button id="view-users-btn" class="btn-secondary">Ver Usuários</button>
+                    <button id="manage-content-btn" class="btn-secondary">Gerenciar Conteúdo</button>
                 </div>
                 
                 <div id="add-content-form" class="form-container hidden">
@@ -137,15 +153,18 @@
                             <label for="content-description">Descrição</label>
                         </div>
                         <div class="input-group">
-                            <input type="text" id="content-thumbnail" required>
+                            <input type="text" id="content-thumbnail" required 
+                                   placeholder="https://exemplo.com/imagem.jpg">
                             <label for="content-thumbnail">URL da Thumbnail</label>
                         </div>
                         <div class="input-group">
-                            <input type="text" id="content-video-url" required>
-                            <label for="content-video-url">URL do Vídeo (Nitroflare)</label>
+                            <input type="text" id="content-video-url" required
+                                   placeholder="https://nitroflare.com/... ou URL do vídeo">
+                            <label for="content-video-url">URL do Vídeo</label>
                         </div>
                         <div class="input-group">
                             <select id="content-category" required>
+                                <option value="">Selecione uma categoria</option>
                                 <option value="filmes">Filme</option>
                                 <option value="series">Série</option>
                             </select>
@@ -157,21 +176,49 @@
 
                 <div id="users-list" class="users-list hidden">
                     <h3>Usuários Cadastrados</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>E-mail</th>
-                                <th>Tipo</th>
-                                <th>Data de Cadastro</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-table-body">
-                            <!-- Usuários serão carregados aqui -->
-                        </tbody>
-                    </table>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>E-mail</th>
+                                    <th>Tipo</th>
+                                    <th>Data de Cadastro</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Usuários serão carregados aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="manage-content" class="manage-content hidden">
+                    <h3>Gerenciar Conteúdo</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Categoria</th>
+                                    <th>Data</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="content-table-body">
+                                <!-- Conteúdo será carregado aqui -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Carregando...</p>
     </div>
 
     <!-- Scripts -->

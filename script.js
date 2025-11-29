@@ -526,6 +526,21 @@ function showFeaturedInfo() {
     }
 }
 
+// Função proxy para evitar problemas de Mixed Content
+async function nitroflareFetch(url, options = {}) {
+    try {
+        // Tenta fazer a requisição diretamente primeiro
+        const response = await fetch(url, options);
+        return response;
+    } catch (error) {
+        console.log('❌ Requisição direta falhou, tentando proxy...', error);
+        
+        // Usa um proxy CORS para contornar Mixed Content
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
+        return await fetch(proxyUrl, options);
+    }
+}
+
 // FUNÇÕES NITROFLARE - IMPLEMENTAÇÃO COMPLETA
 
 // Verificar se é URL do Nitroflare
@@ -621,7 +636,7 @@ async function getNitroflareFileInfo(fileId) {
         const url = `${nitroflareConfig.apiBase}/getFileInfo?files=${fileId}`;
         console.log('🔍 Consultando informações do arquivo:', url);
         
-        const response = await fetch(url);
+        const response = await nitroflareFetch(url); // ← USANDO PROXY
         const data = await response.json();
         
         if (data.type === 'success' && data.result && data.result[fileId]) {
@@ -641,7 +656,7 @@ async function getPremiumDownloadLink(fileId, userEmail = '', premiumKey = '') {
         const url = `${nitroflareConfig.apiBase}/getDownloadLink?user=${encodeURIComponent(userEmail)}&premiumKey=${encodeURIComponent(premiumKey)}&file=${fileId}`;
         console.log('👑 Tentando download premium:', url);
         
-        const response = await fetch(url);
+        const response = await nitroflareFetch(url); // ← USANDO PROXY
         const data = await response.json();
         
         if (data.type === 'success') {
@@ -666,7 +681,7 @@ async function getFreeDownloadLink(fileId) {
         const step1Url = `${nitroflareConfig.apiBase}/getDownloadLink?file=${fileId}`;
         console.log('📝 Etapa 1 - Obtendo token:', step1Url);
         
-        const step1Response = await fetch(step1Url);
+        const step1Response = await nitroflareFetch(step1Url); // ← USANDO PROXY
         const step1Data = await step1Response.json();
         
         console.log('📄 Resposta etapa 1:', step1Data);
@@ -1047,7 +1062,7 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         updateProgress(10, 'Conectando ao Nitroflare...', progressFill, progressText, progressStatus);
         
         console.log('🔄 Obtendo servidor de upload...');
-        const serverResponse = await fetch(nitroflareConfig.uploadGetServer);
+        const serverResponse = await nitroflareFetch(nitroflareConfig.uploadGetServer); // ← USANDO PROXY
         const targetUrl = await serverResponse.text();
         
         console.log('✅ Servidor obtido:', targetUrl);
@@ -1060,7 +1075,7 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         updateProgress(30, 'Preparando upload...', progressFill, progressText, progressStatus);
         
         const formData = new FormData();
-        formData.append('user', nitroflareConfig.userHash); // SEU HASH AQUI
+        formData.append('user', nitroflareConfig.userHash);
         formData.append('files', file);
         
         console.log('📤 Enviando arquivo:', file.name, 'Size:', file.size);
@@ -1068,7 +1083,7 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         // ETAPA 3: Fazer upload
         updateProgress(50, 'Enviando arquivo...', progressFill, progressText, progressStatus);
         
-        const uploadResponse = await fetch(targetUrl.trim(), {
+        const uploadResponse = await nitroflareFetch(targetUrl.trim(), { // ← USANDO PROXY
             method: 'POST',
             body: formData
         });
@@ -1499,6 +1514,7 @@ videoPlayer.addEventListener('error', function(e) {
             showMessage('Erro ao reproduzir vídeo.', 'error');
     }
 });
+
 
 
 

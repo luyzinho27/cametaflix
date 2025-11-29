@@ -67,7 +67,7 @@ let isAdmin = false;
 let currentContent = [];
 let featuredContent = null;
 let allUsers = [];
-let nitroflareUserHash = "aa9201c9437878583820ba04bd16c94f8729ff6da"; // Hash do exemplo
+let nitroflareUserHash = "23fc4d3f415816eff690fb44d472aaa50c76809a"; // Hash do exemplo
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
@@ -1030,3 +1030,4 @@ document.addEventListener('keypress', function(e) {
         }
     }
 });
+

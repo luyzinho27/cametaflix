@@ -1,4 +1,4 @@
-// script.js
+// script.js - VERSÃO ATUALIZADA COM NITROFLARE COMPLETO
 // Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLPLXCc6JRfP43xDjL2j-GWwtMYLLY3Gk",
@@ -60,12 +60,13 @@ const videoFileInput = document.getElementById('video-file');
 const fileInfo = document.querySelector('.file-info');
 const fileName = document.getElementById('file-name');
 const fileSize = document.getElementById('file-size');
-// Configuração do Nitroflare
-const nitroflareConfig = {
-    userHash: "23fc4d3f415816eff690fb44d472aaa50c76809a", // Seu hash de usuário
-    apiBase: "https://nitroflare.com/api/v2",
-    uploadGetServer: "http://nitroflare.com/plugins/fileupload/getServer"
-};
+
+// Elementos do Captcha
+const captchaModal = document.getElementById('captcha-modal');
+const captchaWidget = document.getElementById('captcha-widget');
+const submitCaptchaBtn = document.getElementById('submit-captcha');
+const cancelCaptchaBtn = document.getElementById('cancel-captcha');
+const closeCaptchaModal = document.querySelector('.close-captcha-modal');
 
 // Variáveis globais
 let currentUser = null;
@@ -73,6 +74,18 @@ let isAdmin = false;
 let currentContent = [];
 let featuredContent = null;
 let allUsers = [];
+
+// Configuração do Nitroflare
+const nitroflareConfig = {
+    userHash: "23fc4d3f415816eff690fb44d472aaa50c76809a", // ATUALIZE COM SEU HASH
+    apiBase: "https://nitroflare.com/api/v2",
+    uploadGetServer: "http://nitroflare.com/plugins/fileupload/getServer"
+};
+
+// Variáveis para controle do captcha
+let currentCaptchaResolver = null;
+let currentFileId = null;
+let recaptchaWidgetId = null;
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
@@ -101,10 +114,16 @@ infoFeaturedBtn.addEventListener('click', showFeaturedInfo);
 // File input
 videoFileInput.addEventListener('change', displayFileInfo);
 
+// Captcha
+submitCaptchaBtn.addEventListener('click', handleCaptchaSubmit);
+cancelCaptchaBtn.addEventListener('click', handleCaptchaCancel);
+closeCaptchaModal.addEventListener('click', () => captchaModal.classList.add('hidden'));
+
 // Fechar modal ao clicar fora
 window.addEventListener('click', (e) => {
     if (e.target === videoModal) videoModal.classList.add('hidden');
     if (e.target === infoModal) infoModal.classList.add('hidden');
+    if (e.target === captchaModal) captchaModal.classList.add('hidden');
 });
 
 // Inicialização da aplicação
@@ -356,7 +375,7 @@ function handleNavigation(target) {
     }
 }
 
-// Alternar seções do admin com destaque
+// Alternar seções do admin
 function toggleAdminSection(section) {
     // Remover active de todos os botões e seções
     document.querySelectorAll('.admin-btn').forEach(btn => btn.classList.remove('active'));
@@ -507,8 +526,20 @@ function showFeaturedInfo() {
     }
 }
 
-// Reproduzir conteúdo
-// Reproduzir conteúdo - FUNÇÃO ATUALIZADA
+// FUNÇÕES NITROFLARE - IMPLEMENTAÇÃO COMPLETA
+
+// Verificar se é URL do Nitroflare
+function isNitroflareUrl(url) {
+    return url && url.includes('nitroflare.com');
+}
+
+// Extrair File ID da URL do Nitroflare
+function extractFileIdFromUrl(nitroflareUrl) {
+    const match = nitroflareUrl.match(/nitroflare\.com\/view\/([A-Z0-9]+)/i);
+    return match ? match[1] : null;
+}
+
+// Função principal para reproduzir conteúdo
 async function playContent(content) {
     showLoading();
     
@@ -520,63 +551,289 @@ async function playContent(content) {
         
         // Se for URL do Nitroflare, obter link real de download
         if (isNitroflareUrl(content.videoUrl)) {
-            showMessage('Obtendo link do Nitroflare...', 'info');
+            showMessage('Conectando ao Nitroflare...', 'info');
             
             const fileId = extractFileIdFromUrl(content.videoUrl);
             if (fileId) {
-                // Tenta obter como usuário gratuito primeiro
-                // Em produção, você pode adicionar lógica para contas premium
                 videoSource = await getNitroflareDownloadLink(fileId);
+                
+                if (!videoSource) {
+                    throw new Error('Não foi possível obter o link de download');
+                }
+                
                 showMessage('Conteúdo carregado com sucesso!', 'success');
             } else {
-                throw new Error('Não foi possível identificar o ID do arquivo no Nitroflare');
+                throw new Error('URL do Nitroflare inválida');
             }
         }
         
-        // Configurar o player de vídeo
+        // Configurar o player
         videoPlayer.src = videoSource;
-        videoPlayer.type = 'video/mp4'; // Ou detectar tipo pelo arquivo
+        videoPlayer.load();
         
         videoModal.classList.remove('hidden');
         
-        // Tentar reproduzir
-        await videoPlayer.play();
+        // Tentar reproduzir automaticamente
+        try {
+            await videoPlayer.play();
+        } catch (autoPlayError) {
+            showMessage('Clique no vídeo para iniciar a reprodução.', 'info');
+        }
         
     } catch (error) {
         console.error('Erro ao reproduzir vídeo:', error);
+        showMessage('Erro: ' + error.message, 'error');
         
-        if (error.name === 'NotAllowedError') {
-            showMessage('Clique no vídeo para iniciar a reprodução.', 'warning');
-        } else {
-            showMessage('Erro ao carregar vídeo: ' + error.message, 'error');
+        // Fallback: tentar usar a URL original se disponível
+        if (content.videoUrl && !isNitroflareUrl(content.videoUrl)) {
+            videoPlayer.src = content.videoUrl;
+            showMessage('Usando link alternativo...', 'warning');
         }
     } finally {
         hideLoading();
     }
 }
 
-
-// Adicione este event listener para o player de vídeo
-videoPlayer.addEventListener('error', function(e) {
-    console.error('Erro no player de vídeo:', videoPlayer.error);
+// API Nitroflare - Download Premium
+async function getPremiumDownloadLink(fileId, userEmail, premiumKey) {
+    const url = `${nitroflareConfig.apiBase}/getDownloadLink?user=${encodeURIComponent(userEmail)}&premiumKey=${encodeURIComponent(premiumKey)}&file=${fileId}`;
     
-    switch(videoPlayer.error.code) {
-        case videoPlayer.error.MEDIA_ERR_ABORTED:
-            showMessage('Reprodução cancelada.', 'warning');
-            break;
-        case videoPlayer.error.MEDIA_ERR_NETWORK:
-            showMessage('Erro de rede. Verifique sua conexão.', 'error');
-            break;
-        case videoPlayer.error.MEDIA_ERR_DECODE:
-            showMessage('Formato de vídeo não suportado.', 'error');
-            break;
-        case videoPlayer.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            showMessage('Formato de vídeo não suportado pelo navegador.', 'error');
-            break;
-        default:
-            showMessage('Erro ao reproduzir vídeo.', 'error');
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.type === 'success') {
+        return data.result.url;
+    } else {
+        throw new Error(data.message || 'Erro ao obter link premium');
     }
-});
+}
+
+// API Nitroflare - Download Gratuito
+async function getFreeDownloadLink(fileId) {
+    // ETAPA 1: Obter token de download
+    const step1Url = `${nitroflareConfig.apiBase}/getDownloadLink?file=${fileId}`;
+    const step1Response = await fetch(step1Url);
+    const step1Data = await step1Response.json();
+    
+    if (step1Data.type !== 'success') {
+        throw new Error('Erro na etapa 1: ' + (step1Data.message || 'Resposta inválida'));
+    }
+    
+    const step1Result = step1Data.result;
+    
+    // Verificar se precisa de captcha
+    if (step1Result.recaptchaPublic) {
+        return await handleCaptchaDownload(step1Result, fileId);
+    } else {
+        return await processStep2Download(step1Result, fileId);
+    }
+}
+
+// Função principal para obter link do Nitroflare
+async function getNitroflareDownloadLink(fileId, isPremium = false, userEmail = '', premiumKey = '') {
+    try {
+        if (isPremium && userEmail && premiumKey) {
+            return await getPremiumDownloadLink(fileId, userEmail, premiumKey);
+        } else {
+            return await getFreeDownloadLink(fileId);
+        }
+    } catch (error) {
+        console.error('Erro na API Nitroflare:', error);
+        throw error;
+    }
+}
+
+// Processar download com captcha
+async function handleCaptchaDownload(step1Result, fileId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            currentFileId = fileId;
+            showCaptchaModal(step1Result.recaptchaPublic);
+            currentCaptchaResolver = { resolve, reject };
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Mostrar modal de captcha
+function showCaptchaModal(recaptchaPublicKey) {
+    // Limpar widget anterior
+    captchaWidget.innerHTML = '';
+    
+    // Adicionar script do reCAPTCHA se não existir
+    if (!document.querySelector('script[src*="google.com/recaptcha"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://www.google.com/recaptcha/api.js';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    }
+    
+    // Criar widget do reCAPTCHA
+    const recaptchaDiv = document.createElement('div');
+    recaptchaDiv.className = 'g-recaptcha';
+    recaptchaDiv.setAttribute('data-sitekey', recaptchaPublicKey);
+    recaptchaDiv.setAttribute('data-callback', 'onCaptchaSuccess');
+    recaptchaDiv.setAttribute('data-size', 'normal');
+    captchaWidget.appendChild(recaptchaDiv);
+    
+    // Mostrar modal
+    captchaModal.classList.remove('hidden');
+    
+    // Resetar botão
+    submitCaptchaBtn.disabled = true;
+    submitCaptchaBtn.innerHTML = '<i class="fas fa-check"></i> Verificar';
+    
+    // Recarregar reCAPTCHA se já estiver carregado
+    if (window.grecaptcha) {
+        setTimeout(() => {
+            recaptchaWidgetId = window.grecaptcha.render(recaptchaDiv);
+        }, 100);
+    }
+}
+
+// Callback quando o captcha é resolvido
+window.onCaptchaSuccess = function(captchaResponse) {
+    submitCaptchaBtn.disabled = false;
+    submitCaptchaBtn.innerHTML = '<i class="fas fa-check"></i> Verificar (' + captchaResponse.substring(0, 10) + '...)';
+};
+
+// Manipular envio do captcha
+async function handleCaptchaSubmit() {
+    if (!window.grecaptcha) {
+        showMessage('Captcha não carregado. Recarregue a página.', 'error');
+        return;
+    }
+
+    const captchaResponse = grecaptcha.getResponse(recaptchaWidgetId);
+    
+    if (!captchaResponse) {
+        showMessage('Por favor, complete o captcha primeiro.', 'warning');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        captchaModal.classList.add('hidden');
+        const step1Result = await getStep1Result(currentFileId);
+        const downloadUrl = await processStep2WithCaptcha(step1Result, currentFileId, captchaResponse);
+        
+        if (currentCaptchaResolver) {
+            currentCaptchaResolver.resolve(downloadUrl);
+        }
+        
+    } catch (error) {
+        if (currentCaptchaResolver) {
+            currentCaptchaResolver.reject(error);
+        }
+    } finally {
+        hideLoading();
+        resetCaptchaState();
+    }
+}
+
+// Cancelar captcha
+function handleCaptchaCancel() {
+    captchaModal.classList.add('hidden');
+    
+    if (currentCaptchaResolver) {
+        currentCaptchaResolver.reject(new Error('Captcha cancelado pelo usuário'));
+    }
+    
+    resetCaptchaState();
+}
+
+// Resetar estado do captcha
+function resetCaptchaState() {
+    currentCaptchaResolver = null;
+    currentFileId = null;
+    recaptchaWidgetId = null;
+}
+
+// Obter resultado da etapa 1
+async function getStep1Result(fileId) {
+    const step1Url = `${nitroflareConfig.apiBase}/getDownloadLink?file=${fileId}`;
+    const step1Response = await fetch(step1Url);
+    const step1Data = await step1Response.json();
+    
+    if (step1Data.type !== 'success') {
+        throw new Error('Erro ao obter dados da etapa 1');
+    }
+    
+    return step1Data.result;
+}
+
+// Processar etapa 2 com captcha
+async function processStep2WithCaptcha(step1Result, fileId, captchaResponse) {
+    const accessParams = parseAccessLink(step1Result.accessLink);
+    
+    if (!accessParams) {
+        throw new Error('Não foi possível processar o link de acesso');
+    }
+    
+    // Aguardar delay se necessário
+    if (step1Result.delay && step1Result.delay > 0) {
+        showMessage(`Aguardando ${step1Result.delay} segundos...`, 'info');
+        await new Promise(resolve => setTimeout(resolve, step1Result.delay * 1000));
+    }
+    
+    // Construir URL da etapa 2
+    const step2Url = `${nitroflareConfig.apiBase}/getDownloadLink?file=${accessParams.file}&startDownload=${accessParams.startDownload}&hash1=${accessParams.hash1}&hash2=${accessParams.hash2}&captcha=${encodeURIComponent(captchaResponse)}`;
+    
+    const step2Response = await fetch(step2Url);
+    const step2Data = await step2Response.json();
+    
+    if (step2Data.type === 'success') {
+        return step2Data.result.url;
+    } else {
+        throw new Error(step2Data.message || 'Erro na etapa 2 do download');
+    }
+}
+
+// Processar etapa 2 sem captcha
+async function processStep2Download(step1Result, fileId) {
+    const accessParams = parseAccessLink(step1Result.accessLink);
+    
+    if (!accessParams) {
+        throw new Error('Não foi possível processar o link de acesso');
+    }
+    
+    // Aguardar delay
+    if (step1Result.delay && step1Result.delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, step1Result.delay * 1000));
+    }
+    
+    const step2Url = `${nitroflareConfig.apiBase}/getDownloadLink?file=${accessParams.file}&startDownload=${accessParams.startDownload}&hash1=${accessParams.hash1}&hash2=${accessParams.hash2}`;
+    
+    const step2Response = await fetch(step2Url);
+    const step2Data = await step2Response.json();
+    
+    if (step2Data.type === 'success') {
+        return step2Data.result.url;
+    } else {
+        throw new Error(step2Data.message || 'Erro na etapa 2 do download');
+    }
+}
+
+// Parser para extrair parâmetros do accessLink
+function parseAccessLink(accessLink) {
+    try {
+        const paramsString = accessLink.split('?')[1];
+        const params = new URLSearchParams(paramsString);
+        
+        return {
+            file: params.get('file'),
+            startDownload: params.get('startDownload'),
+            hash1: params.get('hash1'),
+            hash2: params.get('hash2')
+        };
+    } catch (error) {
+        console.error('Erro ao parsear accessLink:', error);
+        return null;
+    }
+}
 
 // Adicionar conteúdo (admin)
 function handleAddContent(e) {
@@ -670,62 +927,6 @@ async function handleNitroflareUpload(e) {
     }
 }
 
-// Funções para API Nitroflare
-async function getNitroflareDownloadLink(fileId, isPremium = false, userEmail = '', premiumKey = '') {
-    try {
-        let url;
-        
-        if (isPremium && userEmail && premiumKey) {
-            // Download premium
-            url = `${nitroflareConfig.apiBase}/getDownloadLink?user=${encodeURIComponent(userEmail)}&premiumKey=${encodeURIComponent(premiumKey)}&file=${fileId}`;
-        } else {
-            // Download gratuito (2 etapas)
-            const step1 = await fetch(`${nitroflareConfig.apiBase}/getDownloadLink?file=${fileId}`);
-            const step1Data = await step1.json();
-            
-            if (step1Data.type !== 'success') {
-                throw new Error('Erro na etapa 1 do download gratuito');
-            }
-            
-            // Aguardar o delay
-            const delay = step1Data.result.delay * 1000;
-            await new Promise(resolve => setTimeout(resolve, delay));
-            
-            // Extrair parâmetros do accessLink (simplificado - em produção precisa parser completo)
-            const accessLink = step1Data.result.accessLink;
-            // Aqui você precisaria implementar a lógica para extrair file, startDownload, hash1, hash2
-            // E resolver o captcha se necessário
-            
-            url = accessLink; // URL simplificada
-        }
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.type === 'success') {
-            return data.result.url; // URL real do arquivo de vídeo
-        } else {
-            throw new Error(data.message || 'Erro ao obter link de download');
-        }
-    } catch (error) {
-        console.error('Erro na API Nitroflare:', error);
-        throw error;
-    }
-}
-
-// Função para extrair File ID da URL do Nitroflare
-function extractFileIdFromUrl(nitroflareUrl) {
-    // Extrai o ID do arquivo de URLs como:
-    // https://nitroflare.com/view/3C88F8AE25CF218/API.txt
-    const match = nitroflareUrl.match(/nitroflare\.com\/view\/([A-Z0-9]+)/i);
-    return match ? match[1] : null;
-}
-
-// Função para verificar se uma URL é do Nitroflare
-function isNitroflareUrl(url) {
-    return url.includes('nitroflare.com');
-}
-
 // Função para fazer upload para Nitroflare
 async function uploadToNitroflare(file, title, description, thumbnail, category) {
     const uploadProgress = document.querySelector('.upload-progress');
@@ -778,11 +979,12 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         updateProgress(100, 'Upload concluído!', progressFill, progressText, progressStatus);
         showMessage('Upload realizado e conteúdo adicionado com sucesso!', 'success');
         
-        // Limpar e recarregar
+        // Limpar formulário
         uploadForm.reset();
         fileInfo.classList.add('hidden');
         uploadProgress.classList.add('hidden');
         
+        // Recarregar conteúdo
         setTimeout(() => {
             loadContent();
             hideLoading();
@@ -790,7 +992,7 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         
     } catch (error) {
         uploadProgress.classList.add('hidden');
-        throw new Error('Erro no upload: ' + error.message);
+        throw error;
     }
 }
 
@@ -1157,4 +1359,24 @@ document.addEventListener('keypress', function(e) {
     }
 });
 
-
+// Event listener para erros de vídeo
+videoPlayer.addEventListener('error', function(e) {
+    console.error('Erro no player de vídeo:', videoPlayer.error);
+    
+    switch(videoPlayer.error.code) {
+        case videoPlayer.error.MEDIA_ERR_ABORTED:
+            showMessage('Reprodução cancelada.', 'warning');
+            break;
+        case videoPlayer.error.MEDIA_ERR_NETWORK:
+            showMessage('Erro de rede. Verifique sua conexão.', 'error');
+            break;
+        case videoPlayer.error.MEDIA_ERR_DECODE:
+            showMessage('Formato de vídeo não suportado.', 'error');
+            break;
+        case videoPlayer.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            showMessage('Formato de vídeo não suportado pelo navegador.', 'error');
+            break;
+        default:
+            showMessage('Erro ao reproduzir vídeo.', 'error');
+    }
+});

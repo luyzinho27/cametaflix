@@ -54,12 +54,33 @@ const infoCategory = document.getElementById('info-category');
 const infoDate = document.getElementById('info-date');
 const loading = document.getElementById('loading');
 
+const uploadContentBtn = document.getElementById('upload-content-btn');
+const uploadSection = document.getElementById('upload-section');
+const uploadForm = document.getElementById('upload-form');
+
 // Variáveis globais
 let currentUser = null;
 let isAdmin = false;
 let currentContent = [];
 let featuredContent = null;
 let allUsers = [];
+let nitroflareUserHash = "aa9201c9437878583820ba04bd16c94f8729ff6da"; // Hash do exemplo - substitua se necessário
+
+// Função alternativa com proxy CORS (se necessário)
+async function getUploadServerWithProxy() {
+    try {
+        // Usando um proxy CORS público (exemplo)
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const targetUrl = 'http://nitroflare.com/plugins/fileupload/getServer';
+        
+        const response = await fetch(proxyUrl + targetUrl);
+        return await response.text();
+    } catch (error) {
+        // Fallback para requisição direta
+        const response = await fetch('http://nitroflare.com/plugins/fileupload/getServer');
+        return await response.text();
+    }
+}
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
@@ -82,6 +103,297 @@ window.addEventListener('click', (e) => {
     if (e.target === videoModal) videoModal.classList.add('hidden');
     if (e.target === infoModal) infoModal.classList.add('hidden');
 });
+
+
+// Adicione estes event listeners
+document.getElementById('upload-content-btn').addEventListener('click', () => toggleAdminSection('upload'));
+document.getElementById('upload-form').addEventListener('submit', handleNitroflareUpload);
+
+// Atualize a função toggleAdminSection para incluir a seção de upload
+function toggleAdminSection(section) {
+    addContentForm.classList.add('hidden');
+    usersList.classList.add('hidden');
+    manageContent.classList.add('hidden');
+    uploadSection.classList.add('hidden');
+    
+    switch(section) {
+        case 'add-content':
+            addContentForm.classList.remove('hidden');
+            break;
+        case 'users':
+            usersList.classList.remove('hidden');
+            loadUsers();
+            break;
+        case 'manage-content':
+            manageContent.classList.remove('hidden');
+            loadContentForManagement();
+            break;
+        case 'upload':
+            uploadSection.classList.remove('hidden');
+            break;
+    }
+}
+
+// Função principal de upload para Nitroflare
+async function handleNitroflareUpload(e) {
+    e.preventDefault();
+    
+    if (!isAdmin) {
+        showMessage('Apenas administradores podem fazer upload.', 'error');
+        return;
+    }
+
+    const fileInput = document.getElementById('video-file');
+    const title = document.getElementById('upload-title').value;
+    const description = document.getElementById('upload-description').value;
+    const thumbnail = document.getElementById('upload-thumbnail').value;
+    const category = document.getElementById('upload-category').value;
+    
+    // Validações
+    if (!fileInput.files.length) {
+        showMessage('Por favor, selecione um arquivo de vídeo.', 'error');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('video/')) {
+        showMessage('Por favor, selecione um arquivo de vídeo válido.', 'error');
+        return;
+    }
+    
+    // Validar tamanho do arquivo (limite de 500MB para exemplo)
+    if (file.size > 500 * 1024 * 1024) {
+        showMessage('Arquivo muito grande. Máximo permitido: 500MB', 'error');
+        return;
+    }
+    
+    if (!title || !description || !thumbnail || !category) {
+        showMessage('Por favor, preencha todos os campos.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading();
+        await uploadToNitroflare(file, title, description, thumbnail, category);
+    } catch (error) {
+        hideLoading();
+        showMessage('Erro no upload: ' + error.message, 'error');
+    }
+}
+
+// Função para fazer upload para Nitroflare
+async function uploadToNitroflare(file, title, description, thumbnail, category) {
+    const uploadProgress = document.querySelector('.upload-progress');
+    const progressFill = document.querySelector('.progress-fill');
+    const progressText = document.querySelector('.progress-text');
+    
+    // Mostrar progresso
+    uploadProgress.classList.remove('hidden');
+    
+    try {
+        // Passo 1: Obter servidor de upload
+        updateProgress(10, 'Obtendo servidor de upload...');
+        const serverResponse = await fetch('http://nitroflare.com/plugins/fileupload/getServer');
+        const targetUrl = await serverResponse.text();
+        
+        if (!targetUrl.startsWith('http')) {
+            throw new Error('Resposta inválida do servidor de upload');
+        }
+        
+        // Passo 2: Preparar formulário para upload
+        updateProgress(30, 'Preparando upload...');
+        const formData = new FormData();
+        formData.append('user', nitroflareUserHash);
+        formData.append('files', file);
+        
+        // Passo 3: Fazer upload usando XMLHttpRequest para suporte a progresso
+        updateProgress(50, 'Fazendo upload do arquivo...');
+        
+        const uploadResult = await uploadWithProgress(targetUrl, formData, (progress) => {
+            const uploadPercent = 50 + (progress * 0.4); // 50% a 90%
+            updateProgress(uploadPercent, `Upload: ${Math.round(progress)}%`);
+        });
+        
+        // Passo 4: Processar resposta
+        updateProgress(90, 'Processando resposta...');
+        const result = JSON.parse(uploadResult);
+        
+        if (result && result.files && result.files.length > 0) {
+            const uploadedFile = result.files[0];
+            
+            // Passo 5: Salvar no Firestore
+            updateProgress(95, 'Salvando informações...');
+            await saveContentToFirestore(title, description, thumbnail, uploadedFile.url, category);
+            
+            updateProgress(100, 'Upload concluído com sucesso!');
+            showMessage('Upload realizado e conteúdo adicionado com sucesso!', 'success');
+            
+            // Limpar formulário
+            document.getElementById('upload-form').reset();
+            uploadProgress.classList.add('hidden');
+            
+            // Recarregar conteúdo
+            setTimeout(() => {
+                loadContent();
+                hideLoading();
+            }, 1000);
+            
+        } else {
+            throw new Error('Resposta inválida do servidor de upload');
+        }
+        
+    } catch (error) {
+        uploadProgress.classList.add('hidden');
+        throw error;
+    }
+}
+
+// Função para upload com acompanhamento de progresso
+function uploadWithProgress(url, formData, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                onProgress(percentComplete);
+            }
+        });
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                resolve(xhr.responseText);
+            } else {
+                reject(new Error(`Upload falhou com status: ${xhr.status}`));
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Erro de conexão durante o upload'));
+        });
+        
+        xhr.open('POST', url);
+        xhr.send(formData);
+    });
+}
+
+// Função para salvar conteúdo no Firestore após upload
+async function saveContentToFirestore(title, description, thumbnail, videoUrl, category) {
+    const contentData = {
+        title,
+        description,
+        thumbnail,
+        videoUrl,
+        category,
+        addedBy: currentUser.uid,
+        addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        source: 'nitroflare',
+        uploadDate: new Date().toISOString()
+    };
+    
+    await db.collection('content').add(contentData);
+}
+
+// Função para atualizar a barra de progresso
+function updateProgress(percent, text) {
+    const progressFill = document.querySelector('.progress-fill');
+    const progressText = document.querySelector('.progress-text');
+    
+    progressFill.style.width = percent + '%';
+    progressText.textContent = text;
+}
+
+// Função alternativa para upload direto (sem Nitroflare) - para fallback
+async function handleDirectUpload(e) {
+    e.preventDefault();
+    
+    if (!isAdmin) {
+        showMessage('Apenas administradores podem fazer upload.', 'error');
+        return;
+    }
+
+    const fileInput = document.getElementById('video-file');
+    const title = document.getElementById('upload-title').value;
+    const description = document.getElementById('upload-description').value;
+    const thumbnail = document.getElementById('upload-thumbnail').value;
+    const category = document.getElementById('upload-category').value;
+    
+    if (!fileInput.files.length) {
+        showMessage('Por favor, selecione um arquivo de vídeo.', 'error');
+        return;
+    }
+    
+    // Para upload direto, você precisaria de um servidor próprio
+    // Esta é uma implementação simplificada
+    showMessage('Upload direto requer configuração de servidor próprio.', 'warning');
+}
+
+// Função para obter informações do arquivo antes do upload
+function displayFileInfo() {
+    const fileInput = document.getElementById('video-file');
+    const fileInfo = document.createElement('div');
+    fileInfo.className = 'file-info';
+    
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        fileInfo.innerHTML = `
+            <strong>Informações do Arquivo:</strong><br>
+            Nome: ${file.name}<br>
+            Tamanho: ${(file.size / (1024 * 1024)).toFixed(2)} MB<br>
+            Tipo: ${file.type}
+        `;
+        
+        // Remove info anterior se existir
+        const existingInfo = document.querySelector('.file-info');
+        if (existingInfo) {
+            existingInfo.remove();
+        }
+        
+        fileInput.parentNode.appendChild(fileInfo);
+    }
+}
+
+// Adicione este event listener para mostrar informações do arquivo
+document.getElementById('video-file').addEventListener('change', displayFileInfo);
+
+// Função para testar a conexão com a API do Nitroflare
+async function testNitroflareConnection() {
+    try {
+        showLoading();
+        const response = await fetch('http://nitroflare.com/plugins/fileupload/getServer');
+        const serverUrl = await response.text();
+        
+        if (serverUrl && serverUrl.startsWith('http')) {
+            showMessage('Conexão com Nitroflare estabelecida com sucesso!', 'success');
+        } else {
+            showMessage('Resposta inesperada da API do Nitroflare', 'warning');
+        }
+    } catch (error) {
+        showMessage('Erro ao conectar com Nitroflare: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Adicione um botão de teste de conexão se necessário
+function addConnectionTestButton() {
+    const testBtn = document.createElement('button');
+    testBtn.type = 'button';
+    testBtn.className = 'btn-secondary';
+    testBtn.textContent = 'Testar Conexão Nitroflare';
+    testBtn.onclick = testNitroflareConnection;
+    
+    const uploadSection = document.getElementById('upload-section');
+    uploadSection.querySelector('form').appendChild(testBtn);
+}
+
+// Inicializar a seção de upload quando o admin fizer login
+function initUploadSection() {
+    // Esta função pode ser chamada após o login do admin
+    addConnectionTestButton();
+}
 
 // Inicialização da aplicação
 function initApp() {
@@ -699,3 +1011,4 @@ document.addEventListener('keypress', function(e) {
         }
     }
 });
+

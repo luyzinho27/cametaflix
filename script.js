@@ -955,6 +955,84 @@ async function testNitroflareConfig() {
     }
 }
 
+// Função para debug detalhado do processo de upload
+async function debugUploadProcess(file) {
+    console.group('🔍 DEBUG - Processo de Upload');
+    console.log('📁 Arquivo:', file.name, file.size, file.type);
+    console.log('🔑 User Hash:', nitroflareConfig.userHash);
+    console.log('🌐 Upload Server URL:', nitroflareConfig.uploadGetServer);
+    
+    try {
+        // Testar conexão com servidor
+        console.log('🔄 Testando servidor...');
+        const serverTest = await fetch(nitroflareConfig.uploadGetServer);
+        const serverUrl = await serverTest.text();
+        console.log('✅ Servidor resposta:', serverUrl);
+        
+        // Verificar se o user hash é válido
+        console.log('🔑 Verificando user hash...');
+        if (!nitroflareConfig.userHash || nitroflareConfig.userHash.length < 10) {
+            console.error('❌ User Hash inválido ou muito curto');
+        } else {
+            console.log('✅ User Hash parece válido');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro no debug:', error);
+    }
+    
+    console.groupEnd();
+}
+
+// Modifique a função handleNitroflareUpload para incluir debug
+async function handleNitroflareUpload(e) {
+    e.preventDefault();
+    
+    if (!isAdmin) {
+        showMessage('Apenas administradores podem fazer upload.', 'error');
+        return;
+    }
+
+    const file = videoFileInput.files[0];
+    const title = document.getElementById('upload-title').value;
+    const description = document.getElementById('upload-description').value;
+    const thumbnail = document.getElementById('upload-thumbnail').value;
+    const category = document.getElementById('upload-category').value;
+    
+    // Validações
+    if (!file) {
+        showMessage('Por favor, selecione um arquivo de vídeo.', 'error');
+        return;
+    }
+    
+    if (!file.type.startsWith('video/')) {
+        showMessage('Por favor, selecione um arquivo de vídeo válido.', 'error');
+        return;
+    }
+    
+    if (file.size > 500 * 1024 * 1024) {
+        showMessage('Arquivo muito grande. Máximo permitido: 500MB', 'error');
+        return;
+    }
+    
+    if (!title || !description || !thumbnail || !category) {
+        showMessage('Por favor, preencha todos os campos.', 'error');
+        return;
+    }
+    
+    // Debug antes do upload
+    await debugUploadProcess(file);
+    
+    try {
+        showLoading();
+        await uploadToNitroflare(file, title, description, thumbnail, category);
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Erro completo no upload:', error);
+        showMessage('Erro no upload: ' + error.message, 'error');
+    }
+}
+
 // Função para fazer upload para Nitroflare
 async function uploadToNitroflare(file, title, description, thumbnail, category) {
     const uploadProgress = document.querySelector('.upload-progress');
@@ -1421,6 +1499,7 @@ videoPlayer.addEventListener('error', function(e) {
             showMessage('Erro ao reproduzir vídeo.', 'error');
     }
 });
+
 
 
 

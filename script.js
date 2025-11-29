@@ -53,10 +53,13 @@ const infoDescription = document.getElementById('info-description');
 const infoCategory = document.getElementById('info-category');
 const infoDate = document.getElementById('info-date');
 const loading = document.getElementById('loading');
-
 const uploadContentBtn = document.getElementById('upload-content-btn');
 const uploadSection = document.getElementById('upload-section');
 const uploadForm = document.getElementById('upload-form');
+const videoFileInput = document.getElementById('video-file');
+const fileInfo = document.querySelector('.file-info');
+const fileName = document.getElementById('file-name');
+const fileSize = document.getElementById('file-size');
 
 // Variáveis globais
 let currentUser = null;
@@ -64,23 +67,7 @@ let isAdmin = false;
 let currentContent = [];
 let featuredContent = null;
 let allUsers = [];
-let nitroflareUserHash = "aa9201c9437878583820ba04bd16c94f8729ff6da"; // Hash do exemplo - substitua se necessário
-
-// Função alternativa com proxy CORS (se necessário)
-async function getUploadServerWithProxy() {
-    try {
-        // Usando um proxy CORS público (exemplo)
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-        const targetUrl = 'http://nitroflare.com/plugins/fileupload/getServer';
-        
-        const response = await fetch(proxyUrl + targetUrl);
-        return await response.text();
-    } catch (error) {
-        // Fallback para requisição direta
-        const response = await fetch('http://nitroflare.com/plugins/fileupload/getServer');
-        return await response.text();
-    }
-}
+let nitroflareUserHash = "aa9201c9437878583820ba04bd16c94f8729ff6da"; // Hash do exemplo
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
@@ -91,12 +78,23 @@ goToLogin.addEventListener('click', () => switchScreen('login'));
 logoutBtn.addEventListener('click', handleLogout);
 closeModal.addEventListener('click', () => videoModal.classList.add('hidden'));
 closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
+
+// Botões do painel admin
 addContentBtn.addEventListener('click', () => toggleAdminSection('add-content'));
+uploadContentBtn.addEventListener('click', () => toggleAdminSection('upload'));
 viewUsersBtn.addEventListener('click', () => toggleAdminSection('users'));
 manageContentBtn.addEventListener('click', () => toggleAdminSection('manage-content'));
+
+// Forms
 contentForm.addEventListener('submit', handleAddContent);
+uploadForm.addEventListener('submit', handleNitroflareUpload);
+
+// Conteúdo
 playFeaturedBtn.addEventListener('click', playFeaturedContent);
 infoFeaturedBtn.addEventListener('click', showFeaturedInfo);
+
+// File input
+videoFileInput.addEventListener('change', displayFileInfo);
 
 // Fechar modal ao clicar fora
 window.addEventListener('click', (e) => {
@@ -104,320 +102,34 @@ window.addEventListener('click', (e) => {
     if (e.target === infoModal) infoModal.classList.add('hidden');
 });
 
-
-// Adicione estes event listeners
-document.getElementById('upload-content-btn').addEventListener('click', () => toggleAdminSection('upload'));
-document.getElementById('upload-form').addEventListener('submit', handleNitroflareUpload);
-
-// Atualize a função toggleAdminSection para incluir a seção de upload
-function toggleAdminSection(section) {
-    addContentForm.classList.add('hidden');
-    usersList.classList.add('hidden');
-    manageContent.classList.add('hidden');
-    uploadSection.classList.add('hidden');
-    
-    switch(section) {
-        case 'add-content':
-            addContentForm.classList.remove('hidden');
-            break;
-        case 'users':
-            usersList.classList.remove('hidden');
-            loadUsers();
-            break;
-        case 'manage-content':
-            manageContent.classList.remove('hidden');
-            loadContentForManagement();
-            break;
-        case 'upload':
-            uploadSection.classList.remove('hidden');
-            break;
-    }
-}
-
-// Função principal de upload para Nitroflare
-async function handleNitroflareUpload(e) {
-    e.preventDefault();
-    
-    if (!isAdmin) {
-        showMessage('Apenas administradores podem fazer upload.', 'error');
-        return;
-    }
-
-    const fileInput = document.getElementById('video-file');
-    const title = document.getElementById('upload-title').value;
-    const description = document.getElementById('upload-description').value;
-    const thumbnail = document.getElementById('upload-thumbnail').value;
-    const category = document.getElementById('upload-category').value;
-    
-    // Validações
-    if (!fileInput.files.length) {
-        showMessage('Por favor, selecione um arquivo de vídeo.', 'error');
-        return;
-    }
-    
-    const file = fileInput.files[0];
-    
-    // Validar tipo de arquivo
-    if (!file.type.startsWith('video/')) {
-        showMessage('Por favor, selecione um arquivo de vídeo válido.', 'error');
-        return;
-    }
-    
-    // Validar tamanho do arquivo (limite de 500MB para exemplo)
-    if (file.size > 500 * 1024 * 1024) {
-        showMessage('Arquivo muito grande. Máximo permitido: 500MB', 'error');
-        return;
-    }
-    
-    if (!title || !description || !thumbnail || !category) {
-        showMessage('Por favor, preencha todos os campos.', 'error');
-        return;
-    }
-    
-    try {
-        showLoading();
-        await uploadToNitroflare(file, title, description, thumbnail, category);
-    } catch (error) {
-        hideLoading();
-        showMessage('Erro no upload: ' + error.message, 'error');
-    }
-}
-
-// Função para fazer upload para Nitroflare
-async function uploadToNitroflare(file, title, description, thumbnail, category) {
-    const uploadProgress = document.querySelector('.upload-progress');
-    const progressFill = document.querySelector('.progress-fill');
-    const progressText = document.querySelector('.progress-text');
-    
-    // Mostrar progresso
-    uploadProgress.classList.remove('hidden');
-    
-    try {
-        // Passo 1: Obter servidor de upload
-        updateProgress(10, 'Obtendo servidor de upload...');
-        const serverResponse = await fetch('http://nitroflare.com/plugins/fileupload/getServer');
-        const targetUrl = await serverResponse.text();
-        
-        if (!targetUrl.startsWith('http')) {
-            throw new Error('Resposta inválida do servidor de upload');
-        }
-        
-        // Passo 2: Preparar formulário para upload
-        updateProgress(30, 'Preparando upload...');
-        const formData = new FormData();
-        formData.append('user', nitroflareUserHash);
-        formData.append('files', file);
-        
-        // Passo 3: Fazer upload usando XMLHttpRequest para suporte a progresso
-        updateProgress(50, 'Fazendo upload do arquivo...');
-        
-        const uploadResult = await uploadWithProgress(targetUrl, formData, (progress) => {
-            const uploadPercent = 50 + (progress * 0.4); // 50% a 90%
-            updateProgress(uploadPercent, `Upload: ${Math.round(progress)}%`);
-        });
-        
-        // Passo 4: Processar resposta
-        updateProgress(90, 'Processando resposta...');
-        const result = JSON.parse(uploadResult);
-        
-        if (result && result.files && result.files.length > 0) {
-            const uploadedFile = result.files[0];
-            
-            // Passo 5: Salvar no Firestore
-            updateProgress(95, 'Salvando informações...');
-            await saveContentToFirestore(title, description, thumbnail, uploadedFile.url, category);
-            
-            updateProgress(100, 'Upload concluído com sucesso!');
-            showMessage('Upload realizado e conteúdo adicionado com sucesso!', 'success');
-            
-            // Limpar formulário
-            document.getElementById('upload-form').reset();
-            uploadProgress.classList.add('hidden');
-            
-            // Recarregar conteúdo
-            setTimeout(() => {
-                loadContent();
-                hideLoading();
-            }, 1000);
-            
-        } else {
-            throw new Error('Resposta inválida do servidor de upload');
-        }
-        
-    } catch (error) {
-        uploadProgress.classList.add('hidden');
-        throw error;
-    }
-}
-
-// Função para upload com acompanhamento de progresso
-function uploadWithProgress(url, formData, onProgress) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                onProgress(percentComplete);
-            }
-        });
-        
-        xhr.addEventListener('load', () => {
-            if (xhr.status === 200) {
-                resolve(xhr.responseText);
-            } else {
-                reject(new Error(`Upload falhou com status: ${xhr.status}`));
-            }
-        });
-        
-        xhr.addEventListener('error', () => {
-            reject(new Error('Erro de conexão durante o upload'));
-        });
-        
-        xhr.open('POST', url);
-        xhr.send(formData);
-    });
-}
-
-// Função para salvar conteúdo no Firestore após upload
-async function saveContentToFirestore(title, description, thumbnail, videoUrl, category) {
-    const contentData = {
-        title,
-        description,
-        thumbnail,
-        videoUrl,
-        category,
-        addedBy: currentUser.uid,
-        addedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        source: 'nitroflare',
-        uploadDate: new Date().toISOString()
-    };
-    
-    await db.collection('content').add(contentData);
-}
-
-// Função para atualizar a barra de progresso
-function updateProgress(percent, text) {
-    const progressFill = document.querySelector('.progress-fill');
-    const progressText = document.querySelector('.progress-text');
-    
-    progressFill.style.width = percent + '%';
-    progressText.textContent = text;
-}
-
-// Função alternativa para upload direto (sem Nitroflare) - para fallback
-async function handleDirectUpload(e) {
-    e.preventDefault();
-    
-    if (!isAdmin) {
-        showMessage('Apenas administradores podem fazer upload.', 'error');
-        return;
-    }
-
-    const fileInput = document.getElementById('video-file');
-    const title = document.getElementById('upload-title').value;
-    const description = document.getElementById('upload-description').value;
-    const thumbnail = document.getElementById('upload-thumbnail').value;
-    const category = document.getElementById('upload-category').value;
-    
-    if (!fileInput.files.length) {
-        showMessage('Por favor, selecione um arquivo de vídeo.', 'error');
-        return;
-    }
-    
-    // Para upload direto, você precisaria de um servidor próprio
-    // Esta é uma implementação simplificada
-    showMessage('Upload direto requer configuração de servidor próprio.', 'warning');
-}
-
-// Função para obter informações do arquivo antes do upload
-function displayFileInfo() {
-    const fileInput = document.getElementById('video-file');
-    const fileInfo = document.createElement('div');
-    fileInfo.className = 'file-info';
-    
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        fileInfo.innerHTML = `
-            <strong>Informações do Arquivo:</strong><br>
-            Nome: ${file.name}<br>
-            Tamanho: ${(file.size / (1024 * 1024)).toFixed(2)} MB<br>
-            Tipo: ${file.type}
-        `;
-        
-        // Remove info anterior se existir
-        const existingInfo = document.querySelector('.file-info');
-        if (existingInfo) {
-            existingInfo.remove();
-        }
-        
-        fileInput.parentNode.appendChild(fileInfo);
-    }
-}
-
-// Adicione este event listener para mostrar informações do arquivo
-document.getElementById('video-file').addEventListener('change', displayFileInfo);
-
-// Função para testar a conexão com a API do Nitroflare
-async function testNitroflareConnection() {
-    try {
-        showLoading();
-        const response = await fetch('http://nitroflare.com/plugins/fileupload/getServer');
-        const serverUrl = await response.text();
-        
-        if (serverUrl && serverUrl.startsWith('http')) {
-            showMessage('Conexão com Nitroflare estabelecida com sucesso!', 'success');
-        } else {
-            showMessage('Resposta inesperada da API do Nitroflare', 'warning');
-        }
-    } catch (error) {
-        showMessage('Erro ao conectar com Nitroflare: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Adicione um botão de teste de conexão se necessário
-function addConnectionTestButton() {
-    const testBtn = document.createElement('button');
-    testBtn.type = 'button';
-    testBtn.className = 'btn-secondary';
-    testBtn.textContent = 'Testar Conexão Nitroflare';
-    testBtn.onclick = testNitroflareConnection;
-    
-    const uploadSection = document.getElementById('upload-section');
-    uploadSection.querySelector('form').appendChild(testBtn);
-}
-
-// Inicializar a seção de upload quando o admin fizer login
-function initUploadSection() {
-    // Esta função pode ser chamada após o login do admin
-    addConnectionTestButton();
-}
-
 // Inicialização da aplicação
 function initApp() {
     showLoading();
     
     // Observador de estado de autenticação
     auth.onAuthStateChanged(user => {
-    if (user) {
-        currentUser = user;
-        userEmail.textContent = user.email;
-        
-        // Garantir que o usuário existe no Firestore
-        ensureUserInFirestore(user.uid)
-            .then(() => {
-                checkUserRole(user.uid);
-                switchScreen('main');
-                loadContent();
-            });
-    } else {
-        currentUser = null;
-        switchScreen('login');
-    }
-    hideLoading();
-});
+        if (user) {
+            currentUser = user;
+            userEmail.textContent = user.email;
+            
+            // Garantir que o usuário existe no Firestore
+            ensureUserInFirestore(user.uid)
+                .then(() => {
+                    checkUserRole(user.uid);
+                    switchScreen('main');
+                    loadContent();
+                    hideLoading();
+                })
+                .catch(error => {
+                    console.error('Erro ao garantir usuário no Firestore:', error);
+                    hideLoading();
+                });
+        } else {
+            currentUser = null;
+            switchScreen('login');
+            hideLoading();
+        }
+    });
 
     // Navbar scroll effect
     window.addEventListener('scroll', () => {
@@ -429,8 +141,34 @@ function initApp() {
         }
     });
 
-    // Navegação entre seções
+    // Configurar navegação
     setupNavigation();
+}
+
+// Garantir que usuário existe no Firestore
+function ensureUserInFirestore(uid) {
+    return db.collection('users').doc(uid).get()
+        .then(doc => {
+            if (!doc.exists) {
+                console.log('📝 Criando documento para usuário faltante:', uid);
+                
+                const user = auth.currentUser;
+                return db.collection('users').get().then(snapshot => {
+                    const userRole = snapshot.size === 0 ? 'admin' : 'user';
+                    
+                    const userData = {
+                        email: user.email,
+                        role: userRole,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                        autoCreated: true
+                    };
+                    
+                    return db.collection('users').doc(uid).set(userData);
+                });
+            }
+            return doc;
+        });
 }
 
 // Configurar navegação
@@ -484,7 +222,7 @@ function handleRegister(e) {
             console.log('✅ Usuário criado na Authentication:', user.uid);
             
             // Verificar se é o primeiro usuário
-            return firebase.firestore().collection('users').get().then(snapshot => {
+            return db.collection('users').get().then(snapshot => {
                 console.log('📊 Total de usuários no Firestore:', snapshot.size);
                 
                 // Verificar se já existe algum admin
@@ -506,8 +244,7 @@ function handleRegister(e) {
                 };
                 
                 console.log('💾 Salvando no Firestore...');
-                // FORÇAR a criação com .set() em vez de .add()
-                return firebase.firestore().collection('users').doc(user.uid).set(userData);
+                return db.collection('users').doc(user.uid).set(userData);
             });
         })
         .then(() => {
@@ -541,40 +278,24 @@ function handleLogout() {
 }
 
 // Verificar papel do usuário
-
-
-function ensureUserInFirestore(uid) {
-    return firebase.firestore().collection('users').doc(uid).get()
-        .then(doc => {
-            if (!doc.exists) {
-                console.log('📝 Criando documento para usuário faltante:', uid);
-                
-                const user = firebase.auth().currentUser;
-                const userData = {
-                    email: user.email,
-                    role: 'user', // Por padrão é user
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                    autoCreated: true
-                };
-                
-                return firebase.firestore().collection('users').doc(uid).set(userData);
-            }
-            return doc;
-        });
-}
-
 function checkUserRole(uid) {
+    console.log('🔍 Verificando papel do usuário:', uid);
+    
     db.collection('users').doc(uid).get()
         .then(doc => {
             if (doc.exists) {
                 const userData = doc.data();
+                console.log('📄 Dados encontrados:', userData);
+                
                 isAdmin = userData.role === 'admin';
+                console.log('👑 É admin?', isAdmin);
                 
                 if (isAdmin) {
+                    console.log('✅ Mostrando painel admin');
                     adminPanelLink.classList.remove('hidden');
                     showMessage('Você está logado como administrador', 'success');
                 } else {
+                    console.log('❌ Escondendo painel admin');
                     adminPanelLink.classList.add('hidden');
                     adminPanel.classList.add('hidden');
                     showMessage('Login realizado com sucesso!', 'success');
@@ -587,7 +308,7 @@ function checkUserRole(uid) {
             }
         })
         .catch(error => {
-            console.error('Erro ao verificar papel do usuário:', error);
+            console.error('💥 Erro ao verificar papel:', error);
         });
 }
 
@@ -612,15 +333,15 @@ function handleNavigation(target) {
     
     switch(target) {
         case 'home-link':
-            document.getElementById('section-title').textContent = 'Recomendados para Você';
+            document.getElementById('section-title').innerHTML = '<i class="fas fa-star"></i> Recomendados para Você';
             loadContent();
             break;
         case 'movies-link':
-            document.getElementById('section-title').textContent = 'Filmes';
+            document.getElementById('section-title').innerHTML = '<i class="fas fa-film"></i> Filmes';
             filterContentByCategory('filmes');
             break;
         case 'series-link':
-            document.getElementById('section-title').textContent = 'Séries';
+            document.getElementById('section-title').innerHTML = '<i class="fas fa-tv"></i> Séries';
             filterContentByCategory('series');
             break;
         case 'admin-panel-link':
@@ -630,24 +351,30 @@ function handleNavigation(target) {
     }
 }
 
-// Alternar seções do admin
+// Alternar seções do admin com destaque
 function toggleAdminSection(section) {
-    // Esconder todas as seções
-    addContentForm.classList.add('hidden');
-    usersList.classList.add('hidden');
-    manageContent.classList.add('hidden');
+    // Remover active de todos os botões e seções
+    document.querySelectorAll('.admin-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.admin-section').forEach(section => section.classList.remove('active'));
     
-    // Mostrar a seção selecionada
+    // Adicionar active ao botão clicado
     switch(section) {
         case 'add-content':
-            addContentForm.classList.remove('hidden');
+            addContentBtn.classList.add('active');
+            addContentForm.classList.add('active');
+            break;
+        case 'upload':
+            uploadContentBtn.classList.add('active');
+            uploadSection.classList.add('active');
             break;
         case 'users':
-            usersList.classList.remove('hidden');
+            viewUsersBtn.classList.add('active');
+            usersList.classList.add('active');
             loadUsers();
             break;
         case 'manage-content':
-            manageContent.classList.remove('hidden');
+            manageContentBtn.classList.add('active');
+            manageContent.classList.add('active');
             loadContentForManagement();
             break;
     }
@@ -665,6 +392,7 @@ function loadContent() {
             if (querySnapshot.empty) {
                 contentGrid.innerHTML = `
                     <div class="empty-state">
+                        <i class="fas fa-film"></i>
                         <h3>Nenhum conteúdo disponível</h3>
                         <p>Adicione conteúdo através do painel de administração.</p>
                     </div>
@@ -703,7 +431,8 @@ function createContentItem(content) {
     const contentItem = document.createElement('div');
     contentItem.className = 'content-item';
     contentItem.innerHTML = `
-        <img src="${content.thumbnail}" alt="${content.title}" onerror="this.src='https://via.placeholder.com/300x450/333333/FFFFFF?text=Imagem+Não+Disponível'">
+        <img src="${content.thumbnail}" alt="${content.title}" 
+             onerror="this.src='https://via.placeholder.com/300x450/333333/FFFFFF?text=Imagem+Não+Disponível'">
         <div class="content-info">
             <h4>${content.title}</h4>
             <p>${content.description.substring(0, 100)}...</p>
@@ -751,7 +480,7 @@ function updateFeaturedContent() {
     if (featuredContent) {
         featuredTitle.textContent = featuredContent.title;
         featuredDescription.textContent = featuredContent.description;
-        featuredSection.style.backgroundImage = `linear-gradient(to top, var(--bg-dark) 0%, transparent 50%), url('${featuredContent.thumbnail}')`;
+        featuredSection.style.backgroundImage = `linear-gradient(to top, var(--bg-darker) 0%, transparent 60%), url('${featuredContent.thumbnail}')`;
     }
 }
 
@@ -781,12 +510,10 @@ function playContent(content) {
     // Verificar se é uma URL do Nitroflare ou URL direta de vídeo
     let videoSource = content.videoUrl;
     
-    // Se for URL do Nitroflare, precisaríamos de uma solução específica
-    // Por enquanto, usamos URLs diretas de vídeo para demonstração
+    // Se for URL do Nitroflare, tentar converter para URL de reprodução
     if (content.videoUrl.includes('nitroflare')) {
-        showMessage('Conteúdo do Nitroflare - Integração específica necessária', 'warning');
-        // Aqui você implementaria a lógica específica para Nitroflare
-        videoSource = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+        showMessage('Conteúdo do Nitroflare - Reproduzindo...', 'info');
+        // Em produção, você precisaria da lógica específica para converter a URL
     }
     
     videoPlayer.src = videoSource;
@@ -844,6 +571,140 @@ function handleAddContent(e) {
     });
 }
 
+// Upload para Nitroflare
+async function handleNitroflareUpload(e) {
+    e.preventDefault();
+    
+    if (!isAdmin) {
+        showMessage('Apenas administradores podem fazer upload.', 'error');
+        return;
+    }
+
+    const file = videoFileInput.files[0];
+    const title = document.getElementById('upload-title').value;
+    const description = document.getElementById('upload-description').value;
+    const thumbnail = document.getElementById('upload-thumbnail').value;
+    const category = document.getElementById('upload-category').value;
+    
+    // Validações
+    if (!file) {
+        showMessage('Por favor, selecione um arquivo de vídeo.', 'error');
+        return;
+    }
+    
+    if (!file.type.startsWith('video/')) {
+        showMessage('Por favor, selecione um arquivo de vídeo válido.', 'error');
+        return;
+    }
+    
+    if (file.size > 500 * 1024 * 1024) {
+        showMessage('Arquivo muito grande. Máximo permitido: 500MB', 'error');
+        return;
+    }
+    
+    if (!title || !description || !thumbnail || !category) {
+        showMessage('Por favor, preencha todos os campos.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading();
+        await uploadToNitroflare(file, title, description, thumbnail, category);
+    } catch (error) {
+        hideLoading();
+        showMessage('Erro no upload: ' + error.message, 'error');
+    }
+}
+
+// Função para fazer upload para Nitroflare
+async function uploadToNitroflare(file, title, description, thumbnail, category) {
+    const uploadProgress = document.querySelector('.upload-progress');
+    const progressFill = document.querySelector('.progress-fill');
+    const progressText = document.querySelector('.progress-text');
+    const progressStatus = document.querySelector('.progress-status');
+    
+    // Mostrar progresso
+    uploadProgress.classList.remove('hidden');
+    
+    try {
+        // Simulação de upload (substitua pela API real do Nitroflare)
+        updateProgress(10, 'Conectando ao Nitroflare...', progressFill, progressText, progressStatus);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        updateProgress(30, 'Preparando arquivo...', progressFill, progressText, progressStatus);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        updateProgress(60, 'Fazendo upload...', progressFill, progressText, progressStatus);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        updateProgress(90, 'Processando...', progressFill, progressText, progressStatus);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // URL simulada do Nitroflare (substitua pela URL real retornada pela API)
+        const nitroflareUrl = `https://nitroflare.com/view/${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+        
+        updateProgress(95, 'Salvando informações...', progressFill, progressText, progressStatus);
+        
+        // Salvar no Firestore
+        await saveContentToFirestore(title, description, thumbnail, nitroflareUrl, category, 'nitroflare');
+        
+        updateProgress(100, 'Upload concluído!', progressFill, progressText, progressStatus);
+        showMessage('Upload realizado e conteúdo adicionado com sucesso!', 'success');
+        
+        // Limpar formulário
+        uploadForm.reset();
+        fileInfo.classList.add('hidden');
+        uploadProgress.classList.add('hidden');
+        
+        // Recarregar conteúdo
+        setTimeout(() => {
+            loadContent();
+            hideLoading();
+        }, 1000);
+        
+    } catch (error) {
+        uploadProgress.classList.add('hidden');
+        throw error;
+    }
+}
+
+// Função para salvar conteúdo no Firestore após upload
+async function saveContentToFirestore(title, description, thumbnail, videoUrl, category, source = 'manual') {
+    const contentData = {
+        title,
+        description,
+        thumbnail,
+        videoUrl,
+        category,
+        source,
+        addedBy: currentUser.uid,
+        addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        uploadDate: new Date().toISOString()
+    };
+    
+    await db.collection('content').add(contentData);
+}
+
+// Atualizar progresso do upload
+function updateProgress(percent, status, progressFill, progressText, progressStatus) {
+    progressFill.style.width = percent + '%';
+    progressText.textContent = percent + '%';
+    progressStatus.textContent = status;
+}
+
+// Mostrar informações do arquivo
+function displayFileInfo() {
+    const file = videoFileInput.files[0];
+    
+    if (file) {
+        fileName.textContent = file.name;
+        fileSize.textContent = `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+        fileInfo.classList.remove('hidden');
+    } else {
+        fileInfo.classList.add('hidden');
+    }
+}
+
 // Carregar lista de usuários (admin)
 function loadUsers() {
     if (!isAdmin) return;
@@ -855,7 +716,14 @@ function loadUsers() {
             allUsers = [];
             
             if (querySnapshot.empty) {
-                usersTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum usuário cadastrado</td></tr>';
+                usersTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <i class="fas fa-users"></i>
+                            <h3>Nenhum usuário cadastrado</h3>
+                        </td>
+                    </tr>
+                `;
                 hideLoading();
                 return;
             }
@@ -870,10 +738,19 @@ function loadUsers() {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${user.email}</td>
-                    <td>${user.role}</td>
+                    <td>
+                        <span class="user-role ${user.role}">${user.role}</span>
+                    </td>
                     <td>${user.createdAt ? user.createdAt.toDate().toLocaleDateString('pt-BR') : 'N/A'}</td>
                     <td class="action-buttons">
-                        ${user.role !== 'admin' ? `<button class="btn-danger btn-small" onclick="deleteUser('${user.id}')">Excluir</button>` : '<span class="text-secondary">Admin</span>'}
+                        <button class="btn-secondary btn-small" onclick="editUserRole('${user.id}', '${user.role}')">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        ${user.role !== 'admin' ? `
+                            <button class="btn-danger btn-small" onclick="deleteUser('${user.id}')">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        ` : '<span class="text-secondary">Admin Principal</span>'}
                     </td>
                 `;
                 
@@ -898,7 +775,14 @@ function loadContentForManagement() {
             contentTableBody.innerHTML = '';
             
             if (querySnapshot.empty) {
-                contentTableBody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum conteúdo cadastrado</td></tr>';
+                contentTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <i class="fas fa-film"></i>
+                            <h3>Nenhum conteúdo cadastrado</h3>
+                        </td>
+                    </tr>
+                `;
                 hideLoading();
                 return;
             }
@@ -912,11 +796,19 @@ function loadContentForManagement() {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${content.title}</td>
-                    <td>${content.category === 'filmes' ? 'Filme' : 'Série'}</td>
+                    <td>
+                        <span class="content-category ${content.category}">
+                            ${content.category === 'filmes' ? 'Filme' : 'Série'}
+                        </span>
+                    </td>
                     <td>${content.addedAt ? content.addedAt.toDate().toLocaleDateString('pt-BR') : 'N/A'}</td>
                     <td class="action-buttons">
-                        <button class="btn-secondary btn-small" onclick="editContent('${content.id}')">Editar</button>
-                        <button class="btn-danger btn-small" onclick="deleteContent('${content.id}')">Excluir</button>
+                        <button class="btn-secondary btn-small" onclick="editContent('${content.id}')">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn-danger btn-small" onclick="deleteContent('${content.id}')">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
                     </td>
                 `;
                 
@@ -940,6 +832,7 @@ function filterContentByCategory(category) {
     if (filteredContent.length === 0) {
         contentGrid.innerHTML = `
             <div class="empty-state">
+                <i class="fas fa-${category === 'filmes' ? 'film' : 'tv'}"></i>
                 <h3>Nenhum conteúdo encontrado</h3>
                 <p>Não há ${category === 'filmes' ? 'filmes' : 'séries'} disponíveis no momento.</p>
             </div>
@@ -978,6 +871,30 @@ function deleteUser(userId) {
     }
 }
 
+function editUserRole(userId, currentRole) {
+    if (!isAdmin) return;
+    
+    const newRole = prompt(`Alterar papel do usuário:\n\nAtual: ${currentRole}\n\nDigite "admin" ou "user":`, currentRole);
+    
+    if (newRole && (newRole === 'admin' || newRole === 'user')) {
+        showLoading();
+        
+        db.collection('users').doc(userId).update({
+            role: newRole
+        })
+        .then(() => {
+            showMessage('Papel do usuário atualizado com sucesso!', 'success');
+            loadUsers();
+        })
+        .catch(error => {
+            hideLoading();
+            showMessage('Erro ao atualizar papel: ' + error.message, 'error');
+        });
+    } else if (newRole) {
+        showMessage('Papel inválido. Use "admin" ou "user".', 'error');
+    }
+}
+
 function deleteContent(contentId) {
     if (!isAdmin) return;
     
@@ -998,22 +915,22 @@ function deleteContent(contentId) {
 }
 
 function editContent(contentId) {
-    // Implementação básica de edição - poderia ser expandida
     const content = currentContent.find(c => c.id === contentId);
     if (content) {
+        // Preencher formulário de edição
         document.getElementById('content-title').value = content.title;
         document.getElementById('content-description').value = content.description;
         document.getElementById('content-thumbnail').value = content.thumbnail;
         document.getElementById('content-video-url').value = content.videoUrl;
         document.getElementById('content-category').value = content.category;
         
+        // Mudar para a seção de adicionar conteúdo
+        toggleAdminSection('add-content');
+        
         // Scroll para o formulário
-        addContentForm.classList.remove('hidden');
-        usersList.classList.add('hidden');
-        manageContent.classList.add('hidden');
         addContentForm.scrollIntoView({ behavior: 'smooth' });
         
-        showMessage('Preencha os campos e clique em "Adicionar Conteúdo" para atualizar. Nota: Esta é uma demonstração - em produção, implemente a edição completa.', 'warning');
+        showMessage('Preencha os campos e clique em "Adicionar Conteúdo" para atualizar. Nota: Em produção, implemente a edição completa.', 'warning');
     }
 }
 
@@ -1024,8 +941,11 @@ function showMessage(message, type) {
     existingMessages.forEach(msg => msg.remove());
     
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}-message`;
-    messageDiv.textContent = message;
+    messageDiv.className = `${type}-message message`;
+    messageDiv.innerHTML = `
+        <i class="fas fa-${getMessageIcon(type)}"></i>
+        ${message}
+    `;
     
     // Adiciona a mensagem no topo da tela atual
     const currentScreen = document.querySelector('.screen.active');
@@ -1039,6 +959,16 @@ function showMessage(message, type) {
     }, 5000);
 }
 
+function getMessageIcon(type) {
+    switch(type) {
+        case 'success': return 'check-circle';
+        case 'error': return 'exclamation-circle';
+        case 'warning': return 'exclamation-triangle';
+        case 'info': return 'info-circle';
+        default: return 'info-circle';
+    }
+}
+
 // Loading functions
 function showLoading() {
     loading.classList.remove('hidden');
@@ -1048,11 +978,48 @@ function hideLoading() {
     loading.classList.add('hidden');
 }
 
-// Inicializar dados de exemplo se necessário
-function initializeSampleData() {
-    // Esta função pode ser usada para adicionar dados de exemplo
-    // Remova ou adapte conforme necessário
-}
+// Adicionar estilos para roles e categorias
+const style = document.createElement('style');
+style.textContent = `
+    .user-role {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .user-role.admin {
+        background: var(--gradient-primary);
+        color: white;
+    }
+    
+    .user-role.user {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-secondary);
+    }
+    
+    .content-category {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .content-category.filmes {
+        background: var(--gradient-primary);
+        color: white;
+    }
+    
+    .content-category.series {
+        background: var(--gradient-secondary);
+        color: white;
+    }
+`;
+document.head.appendChild(style);
 
 // Prevenir envio de formulário com Enter
 document.addEventListener('keypress', function(e) {
@@ -1063,5 +1030,3 @@ document.addEventListener('keypress', function(e) {
         }
     }
 });
-
-

@@ -78,14 +78,35 @@ let allUsers = [];
 // Configuração do Nitroflare
 const nitroflareConfig = {
     userHash: "97fd8146ef9f8b25a61dc2221eda0155ba3f1935", // ATUALIZE COM SEU HASH
-    apiBase: "https://nitroflare.com/api/v2",
-    uploadGetServer: "https://nitroflare.com/plugins/fileupload/getServer" // ← HTTPS
+    backendUrl: "https://script.google.com/macros/s/AKfycbyNdugJ6sZ4WYobu3P4h4NEhncz9uz01bjbWpC8DRoNiqv_l8XPM0h-5C7Cz5He9Fqg8w/exec",
+    useBackend: true // Ativa o backend proxy
 };
 
 // Variáveis para controle do captcha
 let currentCaptchaResolver = null;
 let currentFileId = null;
 let recaptchaWidgetId = null;
+
+async function nitroflareRequest(endpoint, params = {}) {
+    const backendUrl = nitroflareConfig.backendUrl;
+    
+    const urlParams = new URLSearchParams();
+    urlParams.append('action', endpoint);
+    
+    // Adiciona todos os parâmetros
+    Object.keys(params).forEach(key => {
+        urlParams.append(key, params[key]);
+    });
+    
+    const url = `${backendUrl}?${urlParams.toString()}`;
+    
+    console.log(`🔧 Requisição para backend: ${endpoint}`, params);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    return data;
+}
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
@@ -631,13 +652,14 @@ async function playContent(content) {
 }
 
 // API Nitroflare - Obter informações do arquivo (NOVA FUNÇÃO)
+// Obter informações do arquivo via backend
 async function getNitroflareFileInfo(fileId) {
     try {
-        const url = `${nitroflareConfig.apiBase}/getFileInfo?files=${fileId}`;
-        console.log('🔍 Consultando informações do arquivo:', url);
+        console.log('🔍 Obtendo informações do arquivo via backend:', fileId);
         
-        const response = await nitroflareFetch(url); // ← USANDO PROXY
-        const data = await response.json();
+        const data = await nitroflareRequest('getFileInfo', {
+            files: fileId
+        });
         
         if (data.type === 'success' && data.result && data.result[fileId]) {
             return data.result[fileId];
@@ -709,15 +731,24 @@ async function getFreeDownloadLink(fileId) {
 // Função principal para obter link do Nitroflare (ATUALIZADA)
 async function getNitroflareDownloadLink(fileId, isPremium = false, userEmail = '', premiumKey = '') {
     try {
-        console.log('🎯 Obtendo link para File ID:', fileId);
+        console.log('🎯 Obtendo link via backend para:', fileId);
+        
+        const params = { file: fileId };
         
         if (isPremium && userEmail && premiumKey) {
-            return await getPremiumDownloadLink(fileId, userEmail, premiumKey);
+            params.user = userEmail;
+            params.premiumKey = premiumKey;
+        }
+        
+        const data = await nitroflareRequest('getDownloadLink', params);
+        
+        if (data.type === 'success') {
+            return data.result.url;
         } else {
-            return await getFreeDownloadLink(fileId);
+            throw new Error(data.message || 'Erro ao obter link de download');
         }
     } catch (error) {
-        console.error('❌ Erro na API Nitroflare:', error);
+        console.error('❌ Erro na API via backend:', error);
         throw error;
     }
 }
@@ -945,22 +976,24 @@ async function handleNitroflareUpload(e) {
 
 
 // Função para testar a configuração do Nitroflare
+// Função para testar a configuração
 async function testNitroflareConfig() {
     try {
         showLoading();
-        console.log('🧪 Testando configuração do Nitroflare...');
+        console.log('🧪 Testando configuração do Nitroflare com backend...');
         
-        // Testar obtenção de servidor
-        const serverResponse = await fetch(nitroflareConfig.uploadGetServer);
-        const targetUrl = await serverResponse.text();
-        console.log('✅ Servidor de upload:', targetUrl);
+        // Testar backend
+        const testResult = await nitroflareRequest('getFileInfo', {
+            files: '9F4A88DB647E025'
+        });
         
-        // Testar API de informações de arquivo
-        const testFileId = '9F4A88DB647E025'; // Use um file ID que você tem
-        const fileInfo = await getNitroflareFileInfo(testFileId);
-        console.log('✅ Informações do arquivo:', fileInfo);
+        console.log('✅ Backend funcionando:', testResult);
         
-        showMessage('Configuração do Nitroflare testada com sucesso!', 'success');
+        if (testResult.type === 'success') {
+            showMessage('Backend configurado com sucesso!', 'success');
+        } else {
+            showMessage('Erro no backend: ' + testResult.message, 'error');
+        }
         
     } catch (error) {
         console.error('❌ Erro no teste:', error);
@@ -969,6 +1002,8 @@ async function testNitroflareConfig() {
         hideLoading();
     }
 }
+
+window.testConfig = testNitroflareConfig;
 
 // Função para debug detalhado do processo de upload
 async function debugUploadProcess(file) {
@@ -1048,7 +1083,7 @@ async function handleNitroflareUpload(e) {
     }
 }
 
-// Função para fazer upload para Nitroflare
+// Upload para Nitroflare usando backend
 async function uploadToNitroflare(file, title, description, thumbnail, category) {
     const uploadProgress = document.querySelector('.upload-progress');
     const progressFill = document.querySelector('.progress-fill');
@@ -1058,12 +1093,12 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
     uploadProgress.classList.remove('hidden');
     
     try {
-        // ETAPA 1: Obter servidor de upload
+        // ETAPA 1: Obter servidor de upload via backend
         updateProgress(10, 'Conectando ao Nitroflare...', progressFill, progressText, progressStatus);
         
-        console.log('🔄 Obtendo servidor de upload...');
-        const serverResponse = await nitroflareFetch(nitroflareConfig.uploadGetServer); // ← USANDO PROXY
-        const targetUrl = await serverResponse.text();
+        console.log('🔄 Obtendo servidor de upload via backend...');
+        const serverData = await nitroflareRequest('getServer');
+        const targetUrl = serverData;
         
         console.log('✅ Servidor obtido:', targetUrl);
         
@@ -1071,37 +1106,33 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
             throw new Error('Não foi possível obter servidor de upload válido');
         }
         
-        // ETAPA 2: Preparar formulário de upload
+        // ETAPA 2: Preparar upload
         updateProgress(30, 'Preparando upload...', progressFill, progressText, progressStatus);
         
-        const formData = new FormData();
-        formData.append('user', nitroflareConfig.userHash);
-        formData.append('files', file);
+        // Ler arquivo como base64 para enviar via backend
+        const fileBase64 = await readFileAsBase64(file);
         
-        console.log('📤 Enviando arquivo:', file.name, 'Size:', file.size);
+        console.log('📤 Enviando arquivo via backend:', file.name);
         
-        // ETAPA 3: Fazer upload
+        // ETAPA 3: Fazer upload via backend
         updateProgress(50, 'Enviando arquivo...', progressFill, progressText, progressStatus);
         
-        const uploadResponse = await nitroflareFetch(targetUrl.trim(), { // ← USANDO PROXY
-            method: 'POST',
-            body: formData
+        const uploadResult = await nitroflareRequest('upload', {
+            user: nitroflareConfig.userHash,
+            targetUrl: targetUrl,
+            file: fileBase64,
+            filename: file.name
         });
         
-        console.log('📄 Resposta do upload:', uploadResponse);
-        
-        const uploadResult = await uploadResponse.json();
         console.log('✅ Resultado do upload:', uploadResult);
         
         if (!uploadResult || !uploadResult.files || !uploadResult.files[0]) {
-            throw new Error('Upload falhou - resposta inválida: ' + JSON.stringify(uploadResult));
+            throw new Error('Upload falhou - resposta inválida');
         }
         
         const uploadedFile = uploadResult.files[0];
-        console.log('📁 Arquivo enviado:', uploadedFile);
-        
-        // URL final do arquivo no Nitroflare
         const nitroflareUrl = `https://nitroflare.com/view/${uploadedFile.urlCode}/${encodeURIComponent(file.name)}`;
+        
         console.log('🔗 URL do arquivo:', nitroflareUrl);
         
         // ETAPA 4: Salvar no Firestore
@@ -1110,14 +1141,13 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         await saveContentToFirestore(title, description, thumbnail, nitroflareUrl, category, 'nitroflare');
         
         updateProgress(100, 'Upload concluído!', progressFill, progressText, progressStatus);
-        showMessage('Upload realizado e conteúdo adicionado com sucesso!', 'success');
+        showMessage('Upload realizado com sucesso!', 'success');
         
-        // Limpar formulário
+        // Limpar e recarregar
         uploadForm.reset();
         fileInfo.classList.add('hidden');
         uploadProgress.classList.add('hidden');
         
-        // Recarregar conteúdo
         setTimeout(() => {
             loadContent();
             hideLoading();
@@ -1126,9 +1156,23 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
     } catch (error) {
         console.error('❌ Erro no upload:', error);
         uploadProgress.classList.add('hidden');
-        throw new Error('Erro no upload: ' + error.message);
+        throw error;
     }
 }
+
+// Função para ler arquivo como base64
+function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            // Remove o prefixo data:application/octet-stream;base64,
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+
 
 // Função para salvar conteúdo no Firestore após upload
 async function saveContentToFirestore(title, description, thumbnail, videoUrl, category, source = 'manual') {
@@ -1514,6 +1558,7 @@ videoPlayer.addEventListener('error', function(e) {
             showMessage('Erro ao reproduzir vídeo.', 'error');
     }
 });
+
 
 
 

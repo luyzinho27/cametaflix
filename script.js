@@ -77,7 +77,7 @@ let allUsers = [];
 
 // Configuração do Nitroflare
 const nitroflareConfig = {
-    userHash: "23fc4d3f415816eff690fb44d472aaa50c76809a", // ATUALIZE COM SEU HASH
+    userHash: "97fd8146ef9f8b25a61dc2221eda0155ba3f1935", // ATUALIZE COM SEU HASH
     apiBase: "https://nitroflare.com/api/v2",
     uploadGetServer: "http://nitroflare.com/plugins/fileupload/getServer"
 };
@@ -1381,4 +1381,5 @@ videoPlayer.addEventListener('error', function(e) {
             showMessage('Erro ao reproduzir vídeo.', 'error');
     }
 });
+
 

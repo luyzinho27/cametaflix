@@ -928,6 +928,33 @@ async function handleNitroflareUpload(e) {
     }
 }
 
+
+// Função para testar a configuração do Nitroflare
+async function testNitroflareConfig() {
+    try {
+        showLoading();
+        console.log('🧪 Testando configuração do Nitroflare...');
+        
+        // Testar obtenção de servidor
+        const serverResponse = await fetch(nitroflareConfig.uploadGetServer);
+        const targetUrl = await serverResponse.text();
+        console.log('✅ Servidor de upload:', targetUrl);
+        
+        // Testar API de informações de arquivo
+        const testFileId = '9F4A88DB647E025'; // Use um file ID que você tem
+        const fileInfo = await getNitroflareFileInfo(testFileId);
+        console.log('✅ Informações do arquivo:', fileInfo);
+        
+        showMessage('Configuração do Nitroflare testada com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Erro no teste:', error);
+        showMessage('Erro no teste: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
 // Função para fazer upload para Nitroflare
 async function uploadToNitroflare(file, title, description, thumbnail, category) {
     const uploadProgress = document.querySelector('.upload-progress');
@@ -941,36 +968,48 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         // ETAPA 1: Obter servidor de upload
         updateProgress(10, 'Conectando ao Nitroflare...', progressFill, progressText, progressStatus);
         
+        console.log('🔄 Obtendo servidor de upload...');
         const serverResponse = await fetch(nitroflareConfig.uploadGetServer);
         const targetUrl = await serverResponse.text();
         
-        if (!targetUrl) {
-            throw new Error('Não foi possível obter servidor de upload');
+        console.log('✅ Servidor obtido:', targetUrl);
+        
+        if (!targetUrl || !targetUrl.includes('http')) {
+            throw new Error('Não foi possível obter servidor de upload válido');
         }
         
         // ETAPA 2: Preparar formulário de upload
         updateProgress(30, 'Preparando upload...', progressFill, progressText, progressStatus);
         
         const formData = new FormData();
-        formData.append('user', nitroflareConfig.userHash);
+        formData.append('user', nitroflareConfig.userHash); // SEU HASH AQUI
         formData.append('files', file);
+        
+        console.log('📤 Enviando arquivo:', file.name, 'Size:', file.size);
         
         // ETAPA 3: Fazer upload
         updateProgress(50, 'Enviando arquivo...', progressFill, progressText, progressStatus);
         
-        const uploadResponse = await fetch(targetUrl, {
+        const uploadResponse = await fetch(targetUrl.trim(), {
             method: 'POST',
             body: formData
         });
         
+        console.log('📄 Resposta do upload:', uploadResponse);
+        
         const uploadResult = await uploadResponse.json();
+        console.log('✅ Resultado do upload:', uploadResult);
         
         if (!uploadResult || !uploadResult.files || !uploadResult.files[0]) {
-            throw new Error('Upload falhou - resposta inválida');
+            throw new Error('Upload falhou - resposta inválida: ' + JSON.stringify(uploadResult));
         }
         
         const uploadedFile = uploadResult.files[0];
+        console.log('📁 Arquivo enviado:', uploadedFile);
+        
+        // URL final do arquivo no Nitroflare
         const nitroflareUrl = `https://nitroflare.com/view/${uploadedFile.urlCode}/${encodeURIComponent(file.name)}`;
+        console.log('🔗 URL do arquivo:', nitroflareUrl);
         
         // ETAPA 4: Salvar no Firestore
         updateProgress(90, 'Salvando informações...', progressFill, progressText, progressStatus);
@@ -992,8 +1031,9 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         }, 1000);
         
     } catch (error) {
+        console.error('❌ Erro no upload:', error);
         uploadProgress.classList.add('hidden');
-        throw error;
+        throw new Error('Erro no upload: ' + error.message);
     }
 }
 
@@ -1381,5 +1421,6 @@ videoPlayer.addEventListener('error', function(e) {
             showMessage('Erro ao reproduzir vídeo.', 'error');
     }
 });
+
 
 

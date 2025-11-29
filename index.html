@@ -1,36 +1,51 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CametaFlix</title>
+    <title>CametaFlix - Plataforma de Streaming</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Carregando...</p>
+    </div>
+
     <!-- Tela de Login -->
     <div id="login-screen" class="screen active">
         <div class="login-container">
             <div class="logo">
-                <i class="fas fa-play-circle"></i>
+                <i class="fas fa-film"></i>
                 <h1>CametaFlix</h1>
             </div>
+            
             <form id="login-form">
                 <h2>Entrar</h2>
+                
                 <div class="input-group">
                     <input type="email" id="login-email" required>
-                    <label for="login-email"><i class="fas fa-envelope"></i> E-mail</label>
+                    <label for="login-email">
+                        <i class="fas fa-envelope"></i>E-mail
+                    </label>
                 </div>
+                
                 <div class="input-group">
                     <input type="password" id="login-password" required>
-                    <label for="login-password"><i class="fas fa-lock"></i> Senha</label>
+                    <label for="login-password">
+                        <i class="fas fa-lock"></i>Senha
+                    </label>
                 </div>
+                
                 <button type="submit" class="btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Entrar
+                    <i class="fas fa-sign-in-alt"></i>Entrar
                 </button>
+                
                 <div class="form-footer">
-                    <p>Novo por aqui? <a href="#" id="go-to-register">Cadastre-se agora</a>.</p>
+                    <p>Não tem uma conta? <a href="#" id="go-to-register">Cadastre-se</a></p>
                 </div>
             </form>
         </div>
@@ -40,24 +55,33 @@
     <div id="register-screen" class="screen">
         <div class="register-container">
             <div class="logo">
-                <i class="fas fa-play-circle"></i>
+                <i class="fas fa-film"></i>
                 <h1>CametaFlix</h1>
             </div>
+            
             <form id="register-form">
-                <h2>Criar Conta</h2>
+                <h2>Cadastrar</h2>
+                
                 <div class="input-group">
                     <input type="email" id="register-email" required>
-                    <label for="register-email"><i class="fas fa-envelope"></i> E-mail</label>
+                    <label for="register-email">
+                        <i class="fas fa-envelope"></i>E-mail
+                    </label>
                 </div>
+                
                 <div class="input-group">
                     <input type="password" id="register-password" required>
-                    <label for="register-password"><i class="fas fa-lock"></i> Senha</label>
+                    <label for="register-password">
+                        <i class="fas fa-lock"></i>Senha
+                    </label>
                 </div>
+                
                 <button type="submit" class="btn-primary">
-                    <i class="fas fa-user-plus"></i> Cadastrar
+                    <i class="fas fa-user-plus"></i>Cadastrar
                 </button>
+                
                 <div class="form-footer">
-                    <p>Já tem uma conta? <a href="#" id="go-to-login">Faça login</a>.</p>
+                    <p>Já tem uma conta? <a href="#" id="go-to-login">Faça login</a></p>
                 </div>
             </form>
         </div>
@@ -65,165 +89,156 @@
 
     <!-- Tela Principal -->
     <div id="main-screen" class="screen">
-        <header>
-            <nav class="navbar">
-                <div class="nav-brand">
-                    <i class="fas fa-play-circle"></i>
-                    <h1>CametaFlix</h1>
-                </div>
-                <div class="nav-links">
-                    <a href="#" id="home-link" class="nav-link active">
-                        <i class="fas fa-home"></i> Início
-                    </a>
-                    <a href="#" id="series-link" class="nav-link">
-                        <i class="fas fa-tv"></i> Séries
-                    </a>
-                    <a href="#" id="movies-link" class="nav-link">
-                        <i class="fas fa-film"></i> Filmes
-                    </a>
-                    <a href="#" id="admin-panel-link" class="nav-link hidden">
-                        <i class="fas fa-cog"></i> Painel Admin
-                    </a>
-                </div>
-                <div class="nav-user">
-                    <span id="user-email"></span>
-                    <button id="logout-btn" class="btn-secondary">
-                        <i class="fas fa-sign-out-alt"></i> Sair
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <i class="fas fa-film"></i>
+                <h1>CametaFlix</h1>
+            </div>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link active" id="home-link">
+                    <i class="fas fa-home"></i>Início
+                </a>
+                <a href="#" class="nav-link" id="movies-link">
+                    <i class="fas fa-film"></i>Filmes
+                </a>
+                <a href="#" class="nav-link" id="series-link">
+                    <i class="fas fa-tv"></i>Séries
+                </a>
+                <a href="#" class="nav-link hidden" id="admin-panel-link">
+                    <i class="fas fa-cog"></i>Painel Admin
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <span id="user-email"></span>
+                <button id="logout-btn" class="btn-secondary btn-small">
+                    <i class="fas fa-sign-out-alt"></i>Sair
+                </button>
+            </div>
+            
+            <div class="mobile-menu">
+                <i class="fas fa-bars"></i>
+            </div>
+        </nav>
+
+        <!-- Seção em Destaque -->
+        <section id="featured" class="featured-section">
+            <div class="featured-content">
+                <h2 id="featured-title">Bem-vindo ao CametaFlix</h2>
+                <p id="featured-description">A melhor plataforma de streaming com conteúdo exclusivo.</p>
+                <div class="featured-actions">
+                    <button id="play-featured" class="btn-primary">
+                        <i class="fas fa-play"></i>Assistir
                     </button>
-                </div>
-                <div class="mobile-menu">
-                    <i class="fas fa-bars"></i>
-                </div>
-            </nav>
-        </header>
-
-        <main>
-            <!-- Seção de Destaque -->
-            <section id="featured" class="featured-section">
-                <div class="featured-content">
-                    <h2 id="featured-title">Bem-vindo ao CametaFlix</h2>
-                    <p id="featured-description">A melhor plataforma de streaming com conteúdo exclusivo.</p>
-                    <div class="featured-actions">
-                        <button class="btn-primary" id="play-featured">
-                            <i class="fas fa-play"></i> Assistir
-                        </button>
-                        <button class="btn-secondary" id="info-featured">
-                            <i class="fas fa-info-circle"></i> Mais Informações
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Seção de Conteúdo -->
-            <section class="content-section">
-                <h3 class="section-title" id="section-title">
-                    <i class="fas fa-star"></i> Recomendados para Você
-                </h3>
-                <div id="content-grid" class="content-grid">
-                    <!-- Conteúdo será carregado dinamicamente -->
-                </div>
-            </section>
-
-            <!-- Modal de Vídeo -->
-            <div id="video-modal" class="modal hidden">
-                <div class="modal-content">
-                    <span class="close-modal">&times;</span>
-                    <div class="video-container">
-                        <video id="video-player" controls>
-                            Seu navegador não suporta a tag de vídeo.
-                        </video>
-                    </div>
-                    <div class="video-info">
-                        <h3 id="video-title"></h3>
-                        <p id="video-description"></p>
-                    </div>
+                    <button id="info-featured" class="btn-secondary">
+                        <i class="fas fa-info-circle"></i>Mais Informações
+                    </button>
                 </div>
             </div>
+        </section>
 
-            <!-- Modal de Informações -->
-            <div id="info-modal" class="modal hidden">
-                <div class="modal-content">
-                    <span class="close-info-modal">&times;</span>
-                    <div class="info-content">
-                        <h3 id="info-title"></h3>
-                        <p id="info-description"></p>
-                        <div class="info-details">
-                            <p><strong><i class="fas fa-tag"></i> Categoria:</strong> <span id="info-category"></span></p>
-                            <p><strong><i class="fas fa-calendar"></i> Adicionado em:</strong> <span id="info-date"></span></p>
-                        </div>
-                    </div>
-                </div>
+        <!-- Seção de Conteúdo -->
+        <section class="content-section">
+            <h2 class="section-title" id="section-title">
+                <i class="fas fa-star"></i>Recomendados para Você
+            </h2>
+            <div id="content-grid" class="content-grid">
+                <!-- Conteúdo será carregado dinamicamente -->
+            </div>
+        </section>
+
+        <!-- Painel de Administração -->
+        <div id="admin-panel" class="admin-panel hidden">
+            <h2><i class="fas fa-cog"></i> Painel de Administração</h2>
+            
+            <div class="admin-actions">
+                <button id="add-content-btn" class="admin-btn active">
+                    <i class="fas fa-plus-circle"></i>
+                    Adicionar Conteúdo
+                </button>
+                <button id="upload-content-btn" class="admin-btn">
+                    <i class="fas fa-upload"></i>
+                    Upload para Nitroflare
+                </button>
+                <button id="view-users-btn" class="admin-btn">
+                    <i class="fas fa-users"></i>
+                    Gerenciar Usuários
+                </button>
+                <button id="manage-content-btn" class="admin-btn">
+                    <i class="fas fa-edit"></i>
+                    Gerenciar Conteúdo
+                </button>
             </div>
 
-            <!-- Painel de Administração -->
-            <div id="admin-panel" class="admin-panel hidden">
-                <h2><i class="fas fa-cog"></i> Painel de Administração</h2>
-                
-                <div class="admin-actions">
-                    <button id="add-content-btn" class="admin-btn active">
-                        <i class="fas fa-plus-circle"></i> Adicionar Conteúdo
-                    </button>
-                    <button id="upload-content-btn" class="admin-btn">
-                        <i class="fas fa-cloud-upload-alt"></i> Upload para Nitroflare
-                    </button>
-                    <button id="view-users-btn" class="admin-btn">
-                        <i class="fas fa-users"></i> Ver Usuários
-                    </button>
-                    <button id="manage-content-btn" class="admin-btn">
-                        <i class="fas fa-edit"></i> Gerenciar Conteúdo
-                    </button>
-                </div>
-                
-                <!-- Seção Adicionar Conteúdo -->
-                <div id="add-content-form" class="admin-section active">
-                    <h3><i class="fas fa-plus-circle"></i> Adicionar Novo Conteúdo</h3>
+            <!-- Seção: Adicionar Conteúdo -->
+            <div id="add-content-form" class="admin-section active">
+                <h3><i class="fas fa-plus-circle"></i> Adicionar Conteúdo Manual</h3>
+                <div class="form-container">
                     <form id="content-form">
                         <div class="form-row">
                             <div class="input-group">
                                 <input type="text" id="content-title" required>
-                                <label for="content-title"><i class="fas fa-heading"></i> Título</label>
+                                <label for="content-title">
+                                    <i class="fas fa-heading"></i>Título
+                                </label>
                             </div>
                             <div class="input-group">
                                 <select id="content-category" required>
-                                    <option value="">Selecione uma categoria</option>
+                                    <option value="">Selecione...</option>
                                     <option value="filmes">Filme</option>
                                     <option value="series">Série</option>
                                 </select>
-                                <label for="content-category"><i class="fas fa-tag"></i> Categoria</label>
+                                <label for="content-category">
+                                    <i class="fas fa-tags"></i>Categoria
+                                </label>
                             </div>
                         </div>
+                        
                         <div class="input-group">
                             <textarea id="content-description" required></textarea>
-                            <label for="content-description"><i class="fas fa-align-left"></i> Descrição</label>
+                            <label for="content-description">
+                                <i class="fas fa-align-left"></i>Descrição
+                            </label>
                         </div>
+                        
                         <div class="form-row">
                             <div class="input-group">
-                                <input type="text" id="content-thumbnail" required 
-                                       placeholder="https://exemplo.com/imagem.jpg">
-                                <label for="content-thumbnail"><i class="fas fa-image"></i> URL da Thumbnail</label>
+                                <input type="url" id="content-thumbnail" required>
+                                <label for="content-thumbnail">
+                                    <i class="fas fa-image"></i>URL da Thumbnail
+                                </label>
                             </div>
                             <div class="input-group">
-                                <input type="text" id="content-video-url" required
-                                       placeholder="https://nitroflare.com/...">
-                                <label for="content-video-url"><i class="fas fa-video"></i> URL do Vídeo</label>
+                                <input type="url" id="content-video-url" required>
+                                <label for="content-video-url">
+                                    <i class="fas fa-video"></i>URL do Vídeo
+                                </label>
                             </div>
                         </div>
+                        
                         <button type="submit" class="btn-primary">
-                            <i class="fas fa-save"></i> Adicionar Conteúdo
+                            <i class="fas fa-plus"></i>Adicionar Conteúdo
                         </button>
                     </form>
                 </div>
+            </div>
 
-                <!-- Seção Upload para Nitroflare -->
-                <div id="upload-section" class="admin-section">
-                    <h3><i class="fas fa-cloud-upload-alt"></i> Upload para Nitroflare</h3>
+            <!-- Seção: Upload para Nitroflare -->
+            <div id="upload-section" class="admin-section">
+                <h3><i class="fas fa-upload"></i> Upload para Nitroflare</h3>
+                <div class="form-container">
                     <form id="upload-form">
-                        <div class="input-group file-input">
-                            <input type="file" id="video-file" accept="video/*" required>
-                            <label for="video-file" class="file-label">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <span>Selecionar Arquivo de Vídeo</span>
-                            </label>
+                        <div class="input-group">
+                            <div class="file-input">
+                                <input type="file" id="video-file" accept="video/*" required>
+                                <label for="video-file" class="file-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Selecione um arquivo de vídeo</span>
+                                    <small>Formatos suportados: MP4, AVI, MKV (Max: 500MB)</small>
+                                </label>
+                            </div>
                         </div>
                         
                         <div class="file-info hidden">
@@ -233,102 +248,154 @@
                                 <span id="file-size"></span>
                             </div>
                         </div>
-
+                        
                         <div class="form-row">
                             <div class="input-group">
                                 <input type="text" id="upload-title" required>
-                                <label for="upload-title"><i class="fas fa-heading"></i> Título do Conteúdo</label>
+                                <label for="upload-title">
+                                    <i class="fas fa-heading"></i>Título
+                                </label>
                             </div>
                             <div class="input-group">
                                 <select id="upload-category" required>
-                                    <option value="">Selecione uma categoria</option>
+                                    <option value="">Selecione...</option>
                                     <option value="filmes">Filme</option>
                                     <option value="series">Série</option>
                                 </select>
-                                <label for="upload-category"><i class="fas fa-tag"></i> Categoria</label>
+                                <label for="upload-category">
+                                    <i class="fas fa-tags"></i>Categoria
+                                </label>
                             </div>
                         </div>
                         
                         <div class="input-group">
                             <textarea id="upload-description" required></textarea>
-                            <label for="upload-description"><i class="fas fa-align-left"></i> Descrição</label>
+                            <label for="upload-description">
+                                <i class="fas fa-align-left"></i>Descrição
+                            </label>
                         </div>
                         
                         <div class="input-group">
-                            <input type="text" id="upload-thumbnail" required 
-                                   placeholder="https://exemplo.com/imagem.jpg">
-                            <label for="upload-thumbnail"><i class="fas fa-image"></i> URL da Thumbnail</label>
+                            <input type="url" id="upload-thumbnail" required>
+                            <label for="upload-thumbnail">
+                                <i class="fas fa-image"></i>URL da Thumbnail
+                            </label>
                         </div>
-
+                        
                         <div class="upload-progress hidden">
                             <div class="progress-bar">
                                 <div class="progress-fill"></div>
                             </div>
                             <div class="progress-info">
                                 <span class="progress-text">0%</span>
-                                <span class="progress-status">Preparando upload...</span>
+                                <span class="progress-status">Iniciando...</span>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn-primary" id="upload-btn">
-                            <i class="fas fa-cloud-upload-alt"></i> Fazer Upload e Adicionar
+                        
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-upload"></i>Fazer Upload
                         </button>
                     </form>
                 </div>
+            </div>
 
-                <!-- Seção Ver Usuários -->
-                <div id="users-list" class="admin-section">
-                    <h3><i class="fas fa-users"></i> Usuários Cadastrados</h3>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th><i class="fas fa-envelope"></i> E-mail</th>
-                                    <th><i class="fas fa-user-tag"></i> Tipo</th>
-                                    <th><i class="fas fa-calendar"></i> Data de Cadastro</th>
-                                    <th><i class="fas fa-cogs"></i> Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="users-table-body">
-                                <!-- Usuários serão carregados aqui -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Seção Gerenciar Conteúdo -->
-                <div id="manage-content" class="admin-section">
-                    <h3><i class="fas fa-edit"></i> Gerenciar Conteúdo</h3>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th><i class="fas fa-heading"></i> Título</th>
-                                    <th><i class="fas fa-tag"></i> Categoria</th>
-                                    <th><i class="fas fa-calendar"></i> Data</th>
-                                    <th><i class="fas fa-cogs"></i> Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="content-table-body">
-                                <!-- Conteúdo será carregado aqui -->
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- Seção: Gerenciar Usuários -->
+            <div id="users-list" class="admin-section">
+                <h3><i class="fas fa-users"></i> Gerenciar Usuários</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-envelope"></i> E-mail</th>
+                                <th><i class="fas fa-user-tag"></i> Papel</th>
+                                <th><i class="fas fa-calendar"></i> Data de Cadastro</th>
+                                <th><i class="fas fa-cogs"></i> Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Usuários serão carregados dinamicamente -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </main>
+
+            <!-- Seção: Gerenciar Conteúdo -->
+            <div id="manage-content" class="admin-section">
+                <h3><i class="fas fa-edit"></i> Gerenciar Conteúdo</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-heading"></i> Título</th>
+                                <th><i class="fas fa-tags"></i> Categoria</th>
+                                <th><i class="fas fa-calendar"></i> Data de Adição</th>
+                                <th><i class="fas fa-cogs"></i> Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="content-table-body">
+                            <!-- Conteúdo será carregado dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Loading Spinner -->
-    <div id="loading" class="loading hidden">
-        <div class="spinner"></div>
-        <p>Carregando...</p>
+    <!-- Modal de Vídeo -->
+    <div id="video-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div class="video-container">
+                <video id="video-player" controls>
+                    Seu navegador não suporta a tag de vídeo.
+                </video>
+            </div>
+            <div class="video-info">
+                <h3 id="video-title">Título do Vídeo</h3>
+                <p id="video-description">Descrição do vídeo será exibida aqui.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Informações -->
+    <div id="info-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-info-modal">&times;</span>
+            <div class="info-content">
+                <h3 id="info-title">Título do Conteúdo</h3>
+                <p id="info-description">Descrição completa do conteúdo.</p>
+                <div class="info-details">
+                    <p><strong><i class="fas fa-tags"></i> Categoria:</strong> <span id="info-category">Filme</span></p>
+                    <p><strong><i class="fas fa-calendar"></i> Data de Adição:</strong> <span id="info-date">01/01/2024</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Captcha -->
+    <div id="captcha-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-captcha-modal close-modal">&times;</span>
+            <div class="captcha-container">
+                <h3><i class="fas fa-robot"></i> Verificação de Segurança</h3>
+                <p>Complete o captcha para continuar com o download do conteúdo:</p>
+                <div id="captcha-widget"></div>
+                <div class="captcha-actions">
+                    <button id="submit-captcha" class="btn-primary" disabled>
+                        <i class="fas fa-check"></i> Verificar
+                    </button>
+                    <button id="cancel-captcha" class="btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

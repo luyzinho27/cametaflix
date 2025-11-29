@@ -60,6 +60,12 @@ const videoFileInput = document.getElementById('video-file');
 const fileInfo = document.querySelector('.file-info');
 const fileName = document.getElementById('file-name');
 const fileSize = document.getElementById('file-size');
+// Configuração do Nitroflare
+const nitroflareConfig = {
+    userHash: "23fc4d3f415816eff690fb44d472aaa50c76809a", // Seu hash de usuário
+    apiBase: "https://nitroflare.com/api/v2",
+    uploadGetServer: "http://nitroflare.com/plugins/fileupload/getServer"
+};
 
 // Variáveis globais
 let currentUser = null;
@@ -67,7 +73,6 @@ let isAdmin = false;
 let currentContent = [];
 let featuredContent = null;
 let allUsers = [];
-let nitroflareUserHash = "23fc4d3f415816eff690fb44d472aaa50c76809a"; // Hash do exemplo
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
@@ -503,26 +508,75 @@ function showFeaturedInfo() {
 }
 
 // Reproduzir conteúdo
-function playContent(content) {
-    videoTitle.textContent = content.title;
-    videoDescription.textContent = content.description;
+// Reproduzir conteúdo - FUNÇÃO ATUALIZADA
+async function playContent(content) {
+    showLoading();
     
-    // Verificar se é uma URL do Nitroflare ou URL direta de vídeo
-    let videoSource = content.videoUrl;
-    
-    // Se for URL do Nitroflare, tentar converter para URL de reprodução
-    if (content.videoUrl.includes('nitroflare')) {
-        showMessage('Conteúdo do Nitroflare - Reproduzindo...', 'info');
-        // Em produção, você precisaria da lógica específica para converter a URL
+    try {
+        videoTitle.textContent = content.title;
+        videoDescription.textContent = content.description;
+        
+        let videoSource = content.videoUrl;
+        
+        // Se for URL do Nitroflare, obter link real de download
+        if (isNitroflareUrl(content.videoUrl)) {
+            showMessage('Obtendo link do Nitroflare...', 'info');
+            
+            const fileId = extractFileIdFromUrl(content.videoUrl);
+            if (fileId) {
+                // Tenta obter como usuário gratuito primeiro
+                // Em produção, você pode adicionar lógica para contas premium
+                videoSource = await getNitroflareDownloadLink(fileId);
+                showMessage('Conteúdo carregado com sucesso!', 'success');
+            } else {
+                throw new Error('Não foi possível identificar o ID do arquivo no Nitroflare');
+            }
+        }
+        
+        // Configurar o player de vídeo
+        videoPlayer.src = videoSource;
+        videoPlayer.type = 'video/mp4'; // Ou detectar tipo pelo arquivo
+        
+        videoModal.classList.remove('hidden');
+        
+        // Tentar reproduzir
+        await videoPlayer.play();
+        
+    } catch (error) {
+        console.error('Erro ao reproduzir vídeo:', error);
+        
+        if (error.name === 'NotAllowedError') {
+            showMessage('Clique no vídeo para iniciar a reprodução.', 'warning');
+        } else {
+            showMessage('Erro ao carregar vídeo: ' + error.message, 'error');
+        }
+    } finally {
+        hideLoading();
     }
-    
-    videoPlayer.src = videoSource;
-    videoModal.classList.remove('hidden');
-    videoPlayer.play().catch(e => {
-        console.error('Erro ao reproduzir vídeo:', e);
-        showMessage('Erro ao reproduzir vídeo. Verifique a URL.', 'error');
-    });
 }
+
+
+// Adicione este event listener para o player de vídeo
+videoPlayer.addEventListener('error', function(e) {
+    console.error('Erro no player de vídeo:', videoPlayer.error);
+    
+    switch(videoPlayer.error.code) {
+        case videoPlayer.error.MEDIA_ERR_ABORTED:
+            showMessage('Reprodução cancelada.', 'warning');
+            break;
+        case videoPlayer.error.MEDIA_ERR_NETWORK:
+            showMessage('Erro de rede. Verifique sua conexão.', 'error');
+            break;
+        case videoPlayer.error.MEDIA_ERR_DECODE:
+            showMessage('Formato de vídeo não suportado.', 'error');
+            break;
+        case videoPlayer.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            showMessage('Formato de vídeo não suportado pelo navegador.', 'error');
+            break;
+        default:
+            showMessage('Erro ao reproduzir vídeo.', 'error');
+    }
+});
 
 // Adicionar conteúdo (admin)
 function handleAddContent(e) {
@@ -616,6 +670,62 @@ async function handleNitroflareUpload(e) {
     }
 }
 
+// Funções para API Nitroflare
+async function getNitroflareDownloadLink(fileId, isPremium = false, userEmail = '', premiumKey = '') {
+    try {
+        let url;
+        
+        if (isPremium && userEmail && premiumKey) {
+            // Download premium
+            url = `${nitroflareConfig.apiBase}/getDownloadLink?user=${encodeURIComponent(userEmail)}&premiumKey=${encodeURIComponent(premiumKey)}&file=${fileId}`;
+        } else {
+            // Download gratuito (2 etapas)
+            const step1 = await fetch(`${nitroflareConfig.apiBase}/getDownloadLink?file=${fileId}`);
+            const step1Data = await step1.json();
+            
+            if (step1Data.type !== 'success') {
+                throw new Error('Erro na etapa 1 do download gratuito');
+            }
+            
+            // Aguardar o delay
+            const delay = step1Data.result.delay * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            // Extrair parâmetros do accessLink (simplificado - em produção precisa parser completo)
+            const accessLink = step1Data.result.accessLink;
+            // Aqui você precisaria implementar a lógica para extrair file, startDownload, hash1, hash2
+            // E resolver o captcha se necessário
+            
+            url = accessLink; // URL simplificada
+        }
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.type === 'success') {
+            return data.result.url; // URL real do arquivo de vídeo
+        } else {
+            throw new Error(data.message || 'Erro ao obter link de download');
+        }
+    } catch (error) {
+        console.error('Erro na API Nitroflare:', error);
+        throw error;
+    }
+}
+
+// Função para extrair File ID da URL do Nitroflare
+function extractFileIdFromUrl(nitroflareUrl) {
+    // Extrai o ID do arquivo de URLs como:
+    // https://nitroflare.com/view/3C88F8AE25CF218/API.txt
+    const match = nitroflareUrl.match(/nitroflare\.com\/view\/([A-Z0-9]+)/i);
+    return match ? match[1] : null;
+}
+
+// Função para verificar se uma URL é do Nitroflare
+function isNitroflareUrl(url) {
+    return url.includes('nitroflare.com');
+}
+
 // Função para fazer upload para Nitroflare
 async function uploadToNitroflare(file, title, description, thumbnail, category) {
     const uploadProgress = document.querySelector('.upload-progress');
@@ -623,40 +733,56 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
     const progressText = document.querySelector('.progress-text');
     const progressStatus = document.querySelector('.progress-status');
     
-    // Mostrar progresso
     uploadProgress.classList.remove('hidden');
     
     try {
-        // Simulação de upload (substitua pela API real do Nitroflare)
+        // ETAPA 1: Obter servidor de upload
         updateProgress(10, 'Conectando ao Nitroflare...', progressFill, progressText, progressStatus);
-        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        updateProgress(30, 'Preparando arquivo...', progressFill, progressText, progressStatus);
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        const serverResponse = await fetch(nitroflareConfig.uploadGetServer);
+        const targetUrl = await serverResponse.text();
         
-        updateProgress(60, 'Fazendo upload...', progressFill, progressText, progressStatus);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (!targetUrl) {
+            throw new Error('Não foi possível obter servidor de upload');
+        }
         
-        updateProgress(90, 'Processando...', progressFill, progressText, progressStatus);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // ETAPA 2: Preparar formulário de upload
+        updateProgress(30, 'Preparando upload...', progressFill, progressText, progressStatus);
         
-        // URL simulada do Nitroflare (substitua pela URL real retornada pela API)
-        const nitroflareUrl = `https://nitroflare.com/view/${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+        const formData = new FormData();
+        formData.append('user', nitroflareConfig.userHash);
+        formData.append('files', file);
         
-        updateProgress(95, 'Salvando informações...', progressFill, progressText, progressStatus);
+        // ETAPA 3: Fazer upload
+        updateProgress(50, 'Enviando arquivo...', progressFill, progressText, progressStatus);
         
-        // Salvar no Firestore
+        const uploadResponse = await fetch(targetUrl, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const uploadResult = await uploadResponse.json();
+        
+        if (!uploadResult || !uploadResult.files || !uploadResult.files[0]) {
+            throw new Error('Upload falhou - resposta inválida');
+        }
+        
+        const uploadedFile = uploadResult.files[0];
+        const nitroflareUrl = `https://nitroflare.com/view/${uploadedFile.urlCode}/${encodeURIComponent(file.name)}`;
+        
+        // ETAPA 4: Salvar no Firestore
+        updateProgress(90, 'Salvando informações...', progressFill, progressText, progressStatus);
+        
         await saveContentToFirestore(title, description, thumbnail, nitroflareUrl, category, 'nitroflare');
         
         updateProgress(100, 'Upload concluído!', progressFill, progressText, progressStatus);
         showMessage('Upload realizado e conteúdo adicionado com sucesso!', 'success');
         
-        // Limpar formulário
+        // Limpar e recarregar
         uploadForm.reset();
         fileInfo.classList.add('hidden');
         uploadProgress.classList.add('hidden');
         
-        // Recarregar conteúdo
         setTimeout(() => {
             loadContent();
             hideLoading();
@@ -664,7 +790,7 @@ async function uploadToNitroflare(file, title, description, thumbnail, category)
         
     } catch (error) {
         uploadProgress.classList.add('hidden');
-        throw error;
+        throw new Error('Erro no upload: ' + error.message);
     }
 }
 
@@ -1030,4 +1156,5 @@ document.addEventListener('keypress', function(e) {
         }
     }
 });
+
 

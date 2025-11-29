@@ -401,18 +401,23 @@ function initApp() {
     
     // Observador de estado de autenticação
     auth.onAuthStateChanged(user => {
-        if (user) {
-            currentUser = user;
-            userEmail.textContent = user.email;
-            checkUserRole(user.uid);
-            switchScreen('main');
-            loadContent();
-        } else {
-            currentUser = null;
-            switchScreen('login');
-        }
-        hideLoading();
-    });
+    if (user) {
+        currentUser = user;
+        userEmail.textContent = user.email;
+        
+        // Garantir que o usuário existe no Firestore
+        ensureUserInFirestore(user.uid)
+            .then(() => {
+                checkUserRole(user.uid);
+                switchScreen('main');
+                loadContent();
+            });
+    } else {
+        currentUser = null;
+        switchScreen('login');
+    }
+    hideLoading();
+});
 
     // Navbar scroll effect
     window.addEventListener('scroll', () => {
@@ -471,13 +476,28 @@ function handleRegister(e) {
     const email = document.getElementById('register-email').value;
     const password = document.getElementById('register-password').value;
 
+    console.log('🚀 Iniciando cadastro para:', email);
+
     auth.createUserWithEmailAndPassword(email, password)
         .then(userCredential => {
             const user = userCredential.user;
+            console.log('✅ Usuário criado na Authentication:', user.uid);
             
-            // Verificar se é o primeiro usuário (admin)
-            return db.collection('users').get().then(snapshot => {
-                const userRole = snapshot.empty ? 'admin' : 'user';
+            // Verificar se é o primeiro usuário
+            return firebase.firestore().collection('users').get().then(snapshot => {
+                console.log('📊 Total de usuários no Firestore:', snapshot.size);
+                
+                // Verificar se já existe algum admin
+                let hasAdmin = false;
+                snapshot.forEach(doc => {
+                    if (doc.data().role === 'admin') {
+                        hasAdmin = true;
+                    }
+                });
+                
+                const userRole = !hasAdmin ? 'admin' : 'user';
+                console.log('🎯 Papel atribuído:', userRole);
+                
                 const userData = {
                     email: user.email,
                     role: userRole,
@@ -485,14 +505,23 @@ function handleRegister(e) {
                     lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                // Salvar informações do usuário no Firestore
-                return db.collection('users').doc(user.uid).set(userData);
+                console.log('💾 Salvando no Firestore...');
+                // FORÇAR a criação com .set() em vez de .add()
+                return firebase.firestore().collection('users').doc(user.uid).set(userData);
             });
         })
         .then(() => {
+            console.log('🎉 Cadastro completo! Usuário salvo no Firestore.');
             showMessage('Cadastro realizado com sucesso!', 'success');
+            hideLoading();
+            
+            // Redirecionar para login após 2 segundos
+            setTimeout(() => {
+                switchScreen('login');
+            }, 2000);
         })
         .catch(error => {
+            console.error('💥 Erro completo no cadastro:', error);
             hideLoading();
             showMessage('Erro no cadastro: ' + error.message, 'error');
         });
@@ -512,6 +541,29 @@ function handleLogout() {
 }
 
 // Verificar papel do usuário
+
+
+function ensureUserInFirestore(uid) {
+    return firebase.firestore().collection('users').doc(uid).get()
+        .then(doc => {
+            if (!doc.exists) {
+                console.log('📝 Criando documento para usuário faltante:', uid);
+                
+                const user = firebase.auth().currentUser;
+                const userData = {
+                    email: user.email,
+                    role: 'user', // Por padrão é user
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                    autoCreated: true
+                };
+                
+                return firebase.firestore().collection('users').doc(uid).set(userData);
+            }
+            return doc;
+        });
+}
+
 function checkUserRole(uid) {
     db.collection('users').doc(uid).get()
         .then(doc => {
@@ -1011,4 +1063,5 @@ document.addEventListener('keypress', function(e) {
         }
     }
 });
+
 

@@ -290,20 +290,18 @@
     </div>
 
     <!-- Modal de Vídeo -->
-    <div id="video-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <div class="video-container">
-                <video id="video-player" controls controlsList="nodownload">
-                    Seu navegador não suporta a tag de vídeo.
-                </video>
-            </div>
-            <div class="video-info">
-                <h3 id="video-title">Título do Vídeo</h3>
-                <p id="video-description">Descrição do vídeo será exibida aqui.</p>
-            </div>
+<div id="video-modal" class="modal hidden">
+    <div class="modal-content" style="max-width: 90%; width: 90%; height: 80vh;">
+        <span class="close-modal">&times;</span>
+        <div class="video-container" id="video-container" style="width: 100%; height: 100%; background: #000;">
+            <!-- O player será injetado aqui -->
+        </div>
+        <div class="video-info" style="padding: 20px;">
+            <h3 id="video-title">Título do Vídeo</h3>
+            <p id="video-description">Descrição do vídeo</p>
         </div>
     </div>
+</div>
 
     <!-- Modal de Informações -->
     <div id="info-modal" class="modal hidden">
@@ -328,3 +326,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CametaFlix - Plataforma de Streaming</title>
+    <title>CametaFlix - Streaming Gratuito</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -21,6 +21,7 @@
             <div class="logo">
                 <i class="fas fa-film"></i>
                 <h1>CametaFlix</h1>
+                <p class="tagline">Streaming Gratuito e Seguro</p>
             </div>
             
             <form id="login-form">
@@ -57,6 +58,7 @@
             <div class="logo">
                 <i class="fas fa-film"></i>
                 <h1>CametaFlix</h1>
+                <p class="tagline">Junte-se à nossa comunidade</p>
             </div>
             
             <form id="register-form">
@@ -70,9 +72,9 @@
                 </div>
                 
                 <div class="input-group">
-                    <input type="password" id="register-password" required>
+                    <input type="password" id="register-password" required minlength="6">
                     <label for="register-password">
-                        <i class="fas fa-lock"></i>Senha
+                        <i class="fas fa-lock"></i>Senha (mín. 6 caracteres)
                     </label>
                 </div>
                 
@@ -107,7 +109,7 @@
                     <i class="fas fa-tv"></i>Séries
                 </a>
                 <a href="#" class="nav-link hidden" id="admin-panel-link">
-                    <i class="fas fa-cog"></i>Painel Admin
+                    <i class="fas fa-cog"></i>Admin
                 </a>
             </div>
             
@@ -117,17 +119,13 @@
                     <i class="fas fa-sign-out-alt"></i>Sair
                 </button>
             </div>
-            
-            <div class="mobile-menu">
-                <i class="fas fa-bars"></i>
-            </div>
         </nav>
 
         <!-- Seção em Destaque -->
         <section id="featured" class="featured-section">
             <div class="featured-content">
                 <h2 id="featured-title">Bem-vindo ao CametaFlix</h2>
-                <p id="featured-description">A melhor plataforma de streaming com conteúdo exclusivo.</p>
+                <p id="featured-description">Sua plataforma de streaming gratuita com conteúdo exclusivo.</p>
                 <div class="featured-actions">
                     <button id="play-featured" class="btn-primary">
                         <i class="fas fa-play"></i>Assistir
@@ -158,10 +156,6 @@
                     <i class="fas fa-plus-circle"></i>
                     Adicionar Conteúdo
                 </button>
-                <button id="upload-content-btn" class="admin-btn">
-                    <i class="fas fa-upload"></i>
-                    Upload para Nitroflare
-                </button>
                 <button id="view-users-btn" class="admin-btn">
                     <i class="fas fa-users"></i>
                     Gerenciar Usuários
@@ -174,7 +168,7 @@
 
             <!-- Seção: Adicionar Conteúdo -->
             <div id="add-content-form" class="admin-section active">
-                <h3><i class="fas fa-plus-circle"></i> Adicionar Conteúdo Manual</h3>
+                <h3><i class="fas fa-plus-circle"></i> Adicionar Conteúdo</h3>
                 <div class="form-container">
                     <form id="content-form">
                         <div class="form-row">
@@ -205,95 +199,48 @@
                         
                         <div class="form-row">
                             <div class="input-group">
-                                <input type="url" id="content-thumbnail" required>
+                                <input type="url" id="content-thumbnail" required 
+                                       placeholder="https://exemplo.com/imagem.jpg">
                                 <label for="content-thumbnail">
                                     <i class="fas fa-image"></i>URL da Thumbnail
                                 </label>
                             </div>
                             <div class="input-group">
-                                <input type="url" id="content-video-url" required>
-                                <label for="content-video-url">
-                                    <i class="fas fa-video"></i>URL do Vídeo
+                                <select id="content-source-type" required>
+                                    <option value="">Tipo de fonte...</option>
+                                    <option value="direct">URL Direta</option>
+                                    <option value="google_drive">Google Drive</option>
+                                    <option value="youtube">YouTube</option>
+                                    <option value="archive">Internet Archive</option>
+                                    <option value="mega">Mega.nz</option>
+                                </select>
+                                <label for="content-source-type">
+                                    <i class="fas fa-cloud"></i>Fonte do Vídeo
                                 </label>
                             </div>
+                        </div>
+
+                        <div class="input-group">
+                            <input type="url" id="content-video-url" required 
+                                   placeholder="Cole a URL do vídeo aqui">
+                            <label for="content-video-url">
+                                <i class="fas fa-video"></i>URL do Vídeo
+                            </label>
+                        </div>
+
+                        <div class="url-help">
+                            <h4><i class="fas fa-info-circle"></i> Fontes Suportadas:</h4>
+                            <ul>
+                                <li><strong>URL Direta:</strong> Links MP4, WebM diretamente acessíveis</li>
+                                <li><strong>Google Drive:</strong> Links públicos do Drive</li>
+                                <li><strong>YouTube:</strong> URLs de vídeos públicos ou não-listados</li>
+                                <li><strong>Internet Archive:</strong> Links do archive.org</li>
+                                <li><strong>Mega.nz:</strong> Links públicos do Mega</li>
+                            </ul>
                         </div>
                         
                         <button type="submit" class="btn-primary">
                             <i class="fas fa-plus"></i>Adicionar Conteúdo
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Seção: Upload para Nitroflare -->
-            <div id="upload-section" class="admin-section">
-                <h3><i class="fas fa-upload"></i> Upload para Nitroflare</h3>
-                <div class="form-container">
-                    <form id="upload-form">
-                        <div class="input-group">
-                            <div class="file-input">
-                                <input type="file" id="video-file" accept="video/*" required>
-                                <label for="video-file" class="file-label">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                    <span>Selecione um arquivo de vídeo</span>
-                                    <small>Formatos suportados: MP4, AVI, MKV (Max: 500MB)</small>
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="file-info hidden">
-                            <div class="file-details">
-                                <strong>Arquivo selecionado:</strong>
-                                <span id="file-name"></span>
-                                <span id="file-size"></span>
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="input-group">
-                                <input type="text" id="upload-title" required>
-                                <label for="upload-title">
-                                    <i class="fas fa-heading"></i>Título
-                                </label>
-                            </div>
-                            <div class="input-group">
-                                <select id="upload-category" required>
-                                    <option value="">Selecione...</option>
-                                    <option value="filmes">Filme</option>
-                                    <option value="series">Série</option>
-                                </select>
-                                <label for="upload-category">
-                                    <i class="fas fa-tags"></i>Categoria
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="input-group">
-                            <textarea id="upload-description" required></textarea>
-                            <label for="upload-description">
-                                <i class="fas fa-align-left"></i>Descrição
-                            </label>
-                        </div>
-                        
-                        <div class="input-group">
-                            <input type="url" id="upload-thumbnail" required>
-                            <label for="upload-thumbnail">
-                                <i class="fas fa-image"></i>URL da Thumbnail
-                            </label>
-                        </div>
-                        
-                        <div class="upload-progress hidden">
-                            <div class="progress-bar">
-                                <div class="progress-fill"></div>
-                            </div>
-                            <div class="progress-info">
-                                <span class="progress-text">0%</span>
-                                <span class="progress-status">Iniciando...</span>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-upload"></i>Fazer Upload
                         </button>
                     </form>
                 </div>
@@ -328,7 +275,8 @@
                             <tr>
                                 <th><i class="fas fa-heading"></i> Título</th>
                                 <th><i class="fas fa-tags"></i> Categoria</th>
-                                <th><i class="fas fa-calendar"></i> Data de Adição</th>
+                                <th><i class="fas fa-cloud"></i> Fonte</th>
+                                <th><i class="fas fa-calendar"></i> Data</th>
                                 <th><i class="fas fa-cogs"></i> Ações</th>
                             </tr>
                         </thead>
@@ -346,7 +294,7 @@
         <div class="modal-content">
             <span class="close-modal">&times;</span>
             <div class="video-container">
-                <video id="video-player" controls>
+                <video id="video-player" controls controlsList="nodownload">
                     Seu navegador não suporta a tag de vídeo.
                 </video>
             </div>
@@ -366,27 +314,8 @@
                 <p id="info-description">Descrição completa do conteúdo.</p>
                 <div class="info-details">
                     <p><strong><i class="fas fa-tags"></i> Categoria:</strong> <span id="info-category">Filme</span></p>
+                    <p><strong><i class="fas fa-cloud"></i> Fonte:</strong> <span id="info-source">URL Direta</span></p>
                     <p><strong><i class="fas fa-calendar"></i> Data de Adição:</strong> <span id="info-date">01/01/2024</span></p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Captcha -->
-    <div id="captcha-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-captcha-modal close-modal">&times;</span>
-            <div class="captcha-container">
-                <h3><i class="fas fa-robot"></i> Verificação de Segurança</h3>
-                <p>Complete o captcha para continuar com o download do conteúdo:</p>
-                <div id="captcha-widget"></div>
-                <div class="captcha-actions">
-                    <button id="submit-captcha" class="btn-primary" disabled>
-                        <i class="fas fa-check"></i> Verificar
-                    </button>
-                    <button id="cancel-captcha" class="btn-secondary">
-                        <i class="fas fa-times"></i> Cancelar
-                    </button>
                 </div>
             </div>
         </div>

@@ -1,4 +1,4 @@
-/* style.css - VERSÃO OTIMIZADA E SIMPLIFICADA */
+/* style.css - VERSÃO ATUALIZADA COM PLAYER CORRIGIDO */
 :root {
     --primary-color: #000080;
     --secondary-color: #008000;
@@ -501,17 +501,19 @@ form h2 {
     transform: scale(1.1);
 }
 
+/* Container de Vídeo Corrigido */
 .video-container {
     position: relative;
-    padding-bottom: 56.25%;
-    height: 0;
+    width: 100%;
+    height: 400px;
     background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
+.video-container iframe,
 .video-container video {
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
     border: none;
@@ -796,6 +798,38 @@ form h2 {
     color: var(--text-color);
 }
 
+/* Instruções de Fonte */
+.source-instructions {
+    background: rgba(0, 0, 128, 0.1);
+    padding: 15px;
+    border-radius: var(--border-radius-sm);
+    border-left: 4px solid var(--primary-color);
+    margin: 15px 0;
+    font-size: 14px;
+}
+
+.source-instructions h4 {
+    color: var(--text-color);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.source-instructions p {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.source-instructions ul {
+    padding-left: 20px;
+    color: var(--text-secondary);
+}
+
+.source-instructions li {
+    margin-bottom: 5px;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .navbar {
@@ -856,6 +890,10 @@ form h2 {
     .logo h1 {
         font-size: 2.5rem;
     }
+    
+    .video-container {
+        height: 300px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -870,6 +908,10 @@ form h2 {
     
     .section-title {
         font-size: 1.5rem;
+    }
+    
+    .video-container {
+        height: 250px;
     }
 }
 
@@ -891,35 +933,19 @@ form h2 {
     background: #0000aa;
 }
 
-/* Adicione ao final do style.css */
-.source-instructions {
-    background: rgba(0, 0, 128, 0.1);
-    padding: 15px;
-    border-radius: var(--border-radius-sm);
-    border-left: 4px solid var(--primary-color);
-    margin: 15px 0;
-    font-size: 14px;
+/* Loading para vídeo */
+.video-loading {
+    color: white;
+    font-size: 1.2rem;
+    text-align: center;
 }
 
-.source-instructions h4 {
-    color: var(--text-color);
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.source-instructions ol {
-    padding-left: 20px;
-    color: var(--text-secondary);
-}
-
-.source-instructions li {
-    margin-bottom: 5px;
-    line-height: 1.4;
-}
-
-.source-instructions small {
-    color: var(--warning-color);
-    font-style: italic;
+.video-loading .spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
 }

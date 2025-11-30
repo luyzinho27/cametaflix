@@ -890,3 +890,36 @@ form h2 {
 ::-webkit-scrollbar-thumb:hover {
     background: #0000aa;
 }
+
+/* Adicione ao final do style.css */
+.source-instructions {
+    background: rgba(0, 0, 128, 0.1);
+    padding: 15px;
+    border-radius: var(--border-radius-sm);
+    border-left: 4px solid var(--primary-color);
+    margin: 15px 0;
+    font-size: 14px;
+}
+
+.source-instructions h4 {
+    color: var(--text-color);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.source-instructions ol {
+    padding-left: 20px;
+    color: var(--text-secondary);
+}
+
+.source-instructions li {
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+
+.source-instructions small {
+    color: var(--warning-color);
+    font-style: italic;
+}

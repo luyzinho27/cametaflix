@@ -1,4 +1,4 @@
-// script.js - VERSÃO CORRIGIDA COM SISTEMA DE PLAYER SIMPLIFICADO
+// script.js - VERSÃO COMPLETA COM SISTEMA DE PLAYER CORRIGIDO
 // Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLPLXCc6JRfP43xDjL2j-GWwtMYLLY3Gk",
@@ -470,7 +470,7 @@ function showAdminContentOptions(content) {
 function updateFeaturedContent() {
     if (featuredContent) {
         featuredTitle.textContent = featuredContent.title;
-        featuredDescription.textContent = featuredContent.description;
+        featuredDescription.textContent = featuredDescription;
         featuredSection.style.backgroundImage = `linear-gradient(to top, var(--bg-darker) 0%, transparent 60%), url('${featuredContent.thumbnail}')`;
     }
 }
@@ -494,263 +494,275 @@ function showFeaturedInfo() {
 }
 
 // =============================================
-// SISTEMA DE REPRODUÇÃO SIMPLIFICADO - CORRIGIDO
+// SISTEMA DE REPRODUÇÃO CORRIGIDO
 // =============================================
 
 // Função principal para reproduzir conteúdo
 function playContent(content) {
-    showLoading();
+    console.log('🎬 Iniciando reprodução:', content);
     currentPlayingContent = content;
     
-    try {
-        videoTitle.textContent = content.title;
-        videoDescription.textContent = content.description;
-        
-        console.log('🎬 Reproduzindo:', content.title);
-        console.log('🔗 URL:', content.videoUrl);
-        console.log('📋 Tipo:', content.sourceType);
-        
-        // Limpar o player primeiro
-        videoPlayer.innerHTML = '';
-        
-        // Processar URL baseada no tipo de fonte
-        const processedUrl = processVideoUrl(content.videoUrl, content.sourceType);
-        
-        // Criar player baseado no tipo de fonte
-        if (content.sourceType === 'youtube') {
-            createYouTubePlayer(processedUrl);
-        } else {
-            createVideoPlayer(processedUrl, content);
-        }
-        
-        videoModal.classList.remove('hidden');
-        showMessage('Carregando vídeo...', 'info');
-        
-    } catch (error) {
-        console.error('Erro ao reproduzir vídeo:', error);
-        showMessage('Erro ao carregar o vídeo', 'error');
-        createFallbackPlayer(content);
-    } finally {
-        hideLoading();
-    }
+    // Atualizar informações do modal
+    videoTitle.textContent = content.title;
+    videoDescription.textContent = content.description;
+    
+    // Mostrar modal
+    videoModal.classList.remove('hidden');
+    
+    // Criar player baseado no tipo de fonte
+    createVideoPlayer(content);
 }
 
-// Processar URL para diferentes fontes
-function processVideoUrl(url, sourceType) {
-    console.log(`🔧 Processando ${sourceType}:`, url);
+// Criar player de vídeo
+function createVideoPlayer(content) {
+    const videoContainer = document.getElementById('video-player');
     
-    switch(sourceType) {
-        case 'google_drive':
-            return processGoogleDriveUrl(url);
-            
+    // Limpar container
+    videoContainer.innerHTML = '';
+    
+    console.log('🔧 Criando player para:', content.sourceType);
+    console.log('🔗 URL:', content.videoUrl);
+    
+    switch(content.sourceType) {
         case 'youtube':
-            return processYouTubeUrl(url);
-            
-        case 'archive':
-            return url; // Internet Archive funciona diretamente
-            
-        case 'mega':
-            return url; // Mega precisa de tratamento especial
-            
+            createYouTubePlayer(content.videoUrl, videoContainer);
+            break;
+        case 'google_drive':
+            createGoogleDrivePlayer(content.videoUrl, videoContainer);
+            break;
         case 'direct':
-            return url; // URLs diretas funcionam como estão
-            
+            createDirectVideoPlayer(content.videoUrl, videoContainer);
+            break;
+        case 'archive':
+            createArchivePlayer(content.videoUrl, videoContainer);
+            break;
         default:
-            return url;
+            createUniversalPlayer(content.videoUrl, videoContainer);
     }
 }
 
-// Processar Google Drive
-function processGoogleDriveUrl(url) {
-    // Converter link de visualização para link de download
-    if (url.includes('/file/d/')) {
-        const fileId = url.split('/file/d/')[1].split('/')[0];
-        return `https://drive.google.com/uc?export=download&id=${fileId}`;
-    }
-    return url;
-}
-
-// Processar YouTube
-function processYouTubeUrl(url) {
-    let videoId = '';
+// Player para YouTube
+function createYouTubePlayer(url, container) {
+    let videoId = extractYouTubeId(url);
     
-    if (url.includes('youtube.com/watch?v=')) {
-        videoId = url.split('v=')[1].split('&')[0];
-    } else if (url.includes('youtu.be/')) {
-        videoId = url.split('youtu.be/')[1].split('?')[0];
-    } else if (url.includes('youtube.com/embed/')) {
-        videoId = url.split('/embed/')[1].split('?')[0];
+    if (!videoId) {
+        showFallbackOptions(url, container, 'YouTube');
+        return;
     }
     
-    if (videoId) {
-        return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
     
-    return url;
-}
-
-// Criar player do YouTube
-function createYouTubePlayer(url) {
-    videoPlayer.innerHTML = `
-        <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #000;">
-            <iframe 
-                src="${url}"
-                width="100%" 
-                height="100%" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen
-                style="max-width: 100%; max-height: 100%;">
-            </iframe>
-        </div>
-    `;
-}
-
-// Criar player de vídeo padrão
-function createVideoPlayer(url, content) {
-    videoPlayer.innerHTML = `
-        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; position: relative;">
-            <video 
-                id="main-video-player"
-                controls 
-                controlsList="nodownload"
-                style="width: 100%; height: 100%; max-width: 100%; max-height: 100%;"
-                onloadeddata="handleVideoLoaded()"
-                onerror="handleVideoError()"
-                onwaiting="handleVideoWaiting()"
-                onplaying="handleVideoPlaying()">
-                <source src="${url}" type="video/mp4">
-                <source src="${url}" type="video/webm">
-                Seu navegador não suporta o elemento de vídeo.
-            </video>
-            <div id="video-status" style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px;">
-                Carregando...
-            </div>
-            <div id="video-fallback" style="display: none; text-align: center; color: white; padding: 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                <p>Não foi possível carregar o vídeo</p>
-                <button onclick="openInNewTab('${content.videoUrl}')" 
-                        style="padding: 10px 20px; background: #008000; border: none; border-radius: 5px; color: white; cursor: pointer; margin-top: 10px;">
-                    <i class="fas fa-external-link-alt"></i> Abrir em Nova Aba
-                </button>
-            </div>
-        </div>
+    container.innerHTML = `
+        <iframe 
+            src="${embedUrl}"
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen
+            style="border: none;">
+        </iframe>
     `;
     
-    // Tentar carregar o vídeo
+    console.log('✅ Player YouTube criado');
+}
+
+// Player para Google Drive
+function createGoogleDrivePlayer(url, container) {
+    const fileId = extractGoogleDriveId(url);
+    
+    if (!fileId) {
+        showFallbackOptions(url, container, 'Google Drive');
+        return;
+    }
+    
+    const directUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+    
+    container.innerHTML = `
+        <iframe 
+            src="${directUrl}"
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allowfullscreen
+            style="border: none;">
+        </iframe>
+    `;
+    
+    console.log('✅ Player Google Drive criado');
+}
+
+// Player para URLs diretas
+function createDirectVideoPlayer(url, container) {
+    container.innerHTML = `
+        <video 
+            controls 
+            autoplay
+            style="width: 100%; height: 100%; background: #000;"
+            onerror="handleVideoError()"
+            onloadstart="console.log('🎥 Vídeo carregando...')"
+            oncanplay="console.log('✅ Vídeo pronto para reproduzir')">
+            <source src="${url}" type="video/mp4">
+            <source src="${url}" type="video/webm">
+            Seu navegador não suporta o elemento de vídeo.
+        </video>
+    `;
+    
+    // Tentar reproduzir automaticamente
     setTimeout(() => {
-        const video = document.getElementById('main-video-player');
+        const video = container.querySelector('video');
         if (video) {
-            video.load();
             video.play().catch(e => {
-                console.log('Autoplay bloqueado:', e);
-                updateVideoStatus('Clique para reproduzir');
+                console.log('❌ Autoplay bloqueado:', e);
             });
         }
-    }, 500);
+    }, 1000);
+    
+    console.log('✅ Player direto criado');
 }
 
-// Criar fallback quando o vídeo não carrega
-function createFallbackPlayer(content) {
-    videoPlayer.innerHTML = `
-        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #1a1a1a; color: white; text-align: center; padding: 40px;">
-            <i class="fas fa-video-slash" style="font-size: 4rem; margin-bottom: 20px; color: #ff3333;"></i>
-            <h3 style="margin-bottom: 15px;">Não foi possível carregar o vídeo</h3>
-            <p style="margin-bottom: 10px; color: #b3b3b3;">Tente uma das opções abaixo:</p>
+// Player para Internet Archive
+function createArchivePlayer(url, container) {
+    container.innerHTML = `
+        <iframe 
+            src="${url}"
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allowfullscreen
+            style="border: none;">
+        </iframe>
+    `;
+    
+    console.log('✅ Player Archive criado');
+}
+
+// Player universal (fallback)
+function createUniversalPlayer(url, container) {
+    // Primeiro tenta como iframe
+    container.innerHTML = `
+        <iframe 
+            src="${url}"
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allowfullscreen
+            style="border: none;"
+            onload="console.log('✅ Iframe carregado')"
+            onerror="switchToVideoPlayer(this, '${url}')">
+        </iframe>
+    `;
+}
+
+// Fallback para video element se iframe falhar
+function switchToVideoPlayer(iframe, url) {
+    console.log('❌ Iframe falhou, tentando video element');
+    const container = iframe.parentElement;
+    
+    container.innerHTML = `
+        <video 
+            controls 
+            autoplay
+            style="width: 100%; height: 100%; background: #000;"
+            onerror="showFallbackOptions('${url}', container, 'Video')">
+            <source src="${url}" type="video/mp4">
+            <source src="${url}" type="video/webm">
+            Seu navegador não suporta o elemento de vídeo.
+        </video>
+    `;
+}
+
+// Mostrar opções de fallback
+function showFallbackOptions(url, container, sourceType) {
+    console.log('🔄 Mostrando fallback para:', sourceType);
+    
+    container.innerHTML = `
+        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #1a1a1a; color: white; text-align: center; padding: 20px;">
+            <div style="margin-bottom: 20px;">
+                <i class="fas fa-video-slash" style="font-size: 3rem; color: #ff6b6b; margin-bottom: 15px;"></i>
+                <h3 style="margin-bottom: 10px;">Não foi possível carregar o vídeo</h3>
+                <p style="color: #ccc; margin-bottom: 5px;">Tipo: ${sourceType}</p>
+                <p style="color: #999; font-size: 0.9rem; word-break: break-all;">${url}</p>
+            </div>
             
-            <div style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; justify-content: center;">
-                <button onclick="openInNewTab('${content.videoUrl}')" 
-                        style="padding: 12px 24px; background: #008000; border: none; border-radius: 5px; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-external-link-alt"></i> Abrir Link Original
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                <button onclick="openUrlInNewTab('${url}')" 
+                        style="padding: 12px 20px; background: #4CAF50; border: none; border-radius: 5px; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-external-link-alt"></i> Abrir em Nova Aba
                 </button>
                 
-                <button onclick="testVideoSource('${content.videoUrl}', '${content.sourceType}')" 
-                        style="padding: 12px 24px; background: #000080; border: none; border-radius: 5px; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-video"></i> Testar Fonte
+                <button onclick="testVideoUrl('${url}')" 
+                        style="padding: 12px 20px; background: #2196F3; border: none; border-radius: 5px; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-video"></i> Testar URL
                 </button>
                 
-                <button onclick="copyVideoUrl('${content.videoUrl}')" 
-                        style="padding: 12px 24px; background: #555; border: none; border-radius: 5px; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <button onclick="copyToClipboard('${url}')" 
+                        style="padding: 12px 20px; background: #FF9800; border: none; border-radius: 5px; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-copy"></i> Copiar URL
                 </button>
             </div>
             
-            <div style="margin-top: 25px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 5px; text-align: left; max-width: 500px;">
-                <h4 style="margin-bottom: 10px; color: #008000;">Informações do Vídeo:</h4>
-                <p><strong>URL:</strong> <span style="color: #b3b3b3; font-size: 12px; word-break: break-all;">${content.videoUrl}</span></p>
-                <p><strong>Tipo:</strong> ${SUPPORTED_SERVICES[content.sourceType]}</p>
-                <p><strong>Problemas comuns:</strong></p>
-                <ul style="text-align: left; color: #b3b3b3; font-size: 12px;">
-                    <li>Link não público ou sem permissão de visualização</li>
-                    <li>Formato de vídeo não suportado pelo navegador</li>
-                    <li>Problemas de CORS no servidor de origem</li>
+            <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 5px; max-width: 500px;">
+                <h4 style="margin-bottom: 10px; color: #4CAF50;">Soluções possíveis:</h4>
+                <ul style="text-align: left; color: #ccc; font-size: 0.9rem;">
+                    <li>Verifique se o link está público e acessível</li>
+                    <li>Teste o link diretamente no navegador</li>
+                    <li>Para Google Drive: certifique-se de que o arquivo está compartilhado publicamente</li>
+                    <li>Para YouTube: o vídeo pode ter restrições de incorporação</li>
                 </ul>
             </div>
         </div>
     `;
-    videoModal.classList.remove('hidden');
 }
 
-// Funções de controle de vídeo
-function handleVideoLoaded() {
-    console.log('✅ Vídeo carregado');
-    updateVideoStatus('Pronto para reproduzir');
-}
-
-function handleVideoError() {
-    console.log('❌ Erro no vídeo');
-    updateVideoStatus('Erro ao carregar');
+// Extrair ID do YouTube
+function extractYouTubeId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/,
+        /youtube\.com\/embed\/([^?]+)/,
+        /youtube\.com\/v\/([^?]+)/
+    ];
     
-    // Mostrar fallback após 2 segundos
-    setTimeout(() => {
-        const fallback = document.getElementById('video-fallback');
-        const video = document.getElementById('main-video-player');
-        if (fallback && video) {
-            video.style.display = 'none';
-            fallback.style.display = 'block';
-        }
-    }, 2000);
-}
-
-function handleVideoWaiting() {
-    updateVideoStatus('Buffering...');
-}
-
-function handleVideoPlaying() {
-    updateVideoStatus('Reproduzindo');
-    setTimeout(() => {
-        const status = document.getElementById('video-status');
-        if (status) status.style.display = 'none';
-    }, 3000);
-}
-
-function updateVideoStatus(message) {
-    const status = document.getElementById('video-status');
-    if (status) {
-        status.textContent = message;
-        status.style.display = 'block';
+    for (let pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
     }
+    return null;
+}
+
+// Extrair ID do Google Drive
+function extractGoogleDriveId(url) {
+    const patterns = [
+        /drive\.google\.com\/file\/d\/([^\/]+)/,
+        /drive\.google\.com\/open\?id=([^&]+)/
+    ];
+    
+    for (let pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
 }
 
 // Funções auxiliares
-function openInNewTab(url) {
+function openUrlInNewTab(url) {
     window.open(url, '_blank');
+    showMessage('Abrindo em nova aba...', 'info');
 }
 
-function testVideoSource(url, sourceType) {
-    console.log('🧪 Testando fonte:', url);
-    const processedUrl = processVideoUrl(url, sourceType);
-    window.open(processedUrl, '_blank');
-    showMessage('Abrindo fonte em nova aba para teste...', 'info');
+function testVideoUrl(url) {
+    console.log('🧪 Testando URL:', url);
+    window.open(url, '_blank');
+    showMessage('Testando URL...', 'info');
 }
 
-function copyVideoUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        showMessage('URL copiada para a área de transferência!', 'success');
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showMessage('URL copiada!', 'success');
     }).catch(() => {
-        // Fallback para navegadores mais antigos
+        // Fallback
         const textArea = document.createElement('textarea');
-        textArea.value = url;
+        textArea.value = text;
         document.body.appendChild(textArea);
         textArea.select();
         document.execCommand('copy');
@@ -758,6 +770,33 @@ function copyVideoUrl(url) {
         showMessage('URL copiada!', 'success');
     });
 }
+
+function handleVideoError() {
+    console.log('❌ Erro no elemento de vídeo');
+    if (currentPlayingContent) {
+        const container = document.getElementById('video-player');
+        showFallbackOptions(currentPlayingContent.videoUrl, container, 'Video Element');
+    }
+}
+
+// =============================================
+// SISTEMA DE TESTE RÁPIDO
+// =============================================
+
+// Função para testar rapidamente diferentes fontes
+function quickTest() {
+    const testContent = {
+        title: "Teste YouTube",
+        description: "Vídeo de teste do YouTube",
+        videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        sourceType: "youtube"
+    };
+    
+    playContent(testContent);
+}
+
+// Adicione este botão de teste temporário no HTML ou use no console
+window.testPlayer = quickTest;
 
 // Mostrar instruções de fonte
 function showSourceInstructions(sourceType) {
@@ -1202,6 +1241,46 @@ style.textContent = `
     }
     .source-instructions li {
         margin-bottom: 5px;
+    }
+    
+    /* Estilos para o player de vídeo */
+    .video-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .video-container iframe,
+    .video-container video {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    
+    /* Loading para vídeo */
+    .video-loading {
+        color: white;
+        font-size: 1.2rem;
+        text-align: center;
+    }
+    
+    .video-loading .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #007bff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 `;
 document.head.appendChild(style);

@@ -463,50 +463,6 @@ function copyUrl(url) {
 }
 
 // =============================================
-// TESTE RÁPIDO DO SISTEMA DE VÍDEO
-// =============================================
-
-function testVideoSystem() {
-    console.log('🧪 INICIANDO TESTE DO SISTEMA DE VÍDEO');
-    
-    const testContent = {
-        title: "VÍDEO DE TESTE - YouTube",
-        description: "Este é um vídeo de teste do sistema",
-        videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        sourceType: "youtube"
-    };
-    
-    console.log('🎬 TESTANDO COM:', testContent);
-    playContent(testContent);
-}
-
-function addTestButton() {
-    if (document.getElementById('video-test-button')) return;
-    
-    const testBtn = document.createElement('button');
-    testBtn.id = 'video-test-button';
-    testBtn.innerHTML = '🧪 Testar Vídeo';
-    testBtn.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 10000;
-        padding: 12px 20px;
-        background: #FF4081;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(255, 64, 129, 0.3);
-    `;
-    testBtn.onclick = testVideoSystem;
-    document.body.appendChild(testBtn);
-    
-    console.log('✅ Botão de teste adicionado - Clique para testar o sistema de vídeo');
-}
-
-// =============================================
 // SISTEMA PRINCIPAL DA APLICAÇÃO
 // =============================================
 
@@ -1365,3 +1321,8 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+
+// Tornar funções globais para teste
+window.testVideo = testVideoSystem;
+window.debugVideo = playContent;

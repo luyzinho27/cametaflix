@@ -1,4 +1,4 @@
-// script.js - VERSÃO OTIMIZADA PARA SOLUÇÕES GRATUITAS
+// script.js - VERSÃO COMPLETA CORRIGIDA PARA TODAS AS FONTES
 // Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLPLXCc6JRfP43xDjL2j-GWwtMYLLY3Gk",
@@ -61,6 +61,7 @@ let isAdmin = false;
 let currentContent = [];
 let featuredContent = null;
 let allUsers = [];
+let currentPlayingContent = null;
 
 // Serviços de hospedagem gratuita suportados
 const SUPPORTED_SERVICES = {
@@ -143,6 +144,21 @@ function initApp() {
 
     // Configurar navegação
     setupNavigation();
+    
+    // Configurar instruções de fonte
+    setupSourceInstructions();
+}
+
+// Configurar instruções de fonte
+function setupSourceInstructions() {
+    const sourceTypeSelect = document.getElementById('content-source-type');
+    if (sourceTypeSelect) {
+        sourceTypeSelect.addEventListener('change', function() {
+            showSourceInstructions(this.value);
+        });
+        // Mostrar instruções iniciais
+        showSourceInstructions(sourceTypeSelect.value);
+    }
 }
 
 // Garantir que usuário existe no Firestore
@@ -477,45 +493,183 @@ function showFeaturedInfo() {
     }
 }
 
+// =============================================
+// SISTEMA DE PROCESSAMENTO DE URLs - CORRIGIDO
+// =============================================
+
 // Processar URL baseada no tipo de fonte
 function processVideoUrl(videoUrl, sourceType) {
+    console.log(`🔧 Processando ${sourceType}:`, videoUrl);
+    
     switch(sourceType) {
         case 'google_drive':
-            // Converter link do Google Drive para visualização direta
-            if (videoUrl.includes('drive.google.com/file/d/')) {
-                const fileId = videoUrl.split('/d/')[1].split('/')[0];
-                return `https://drive.google.com/uc?export=download&id=${fileId}`;
-            }
-            return videoUrl;
+            return processGoogleDriveUrl(videoUrl);
             
         case 'youtube':
-            // Converter para embed do YouTube
-            if (videoUrl.includes('youtube.com/watch?v=')) {
-                const videoId = videoUrl.split('v=')[1].split('&')[0];
-                return `https://www.youtube.com/embed/${videoId}`;
-            } else if (videoUrl.includes('youtu.be/')) {
-                const videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
-                return `https://www.youtube.com/embed/${videoId}`;
-            }
-            return videoUrl;
+            return processYouTubeUrl(videoUrl);
             
         case 'archive':
-            // URLs do Internet Archive geralmente funcionam diretamente
-            return videoUrl;
+            return processArchiveUrl(videoUrl);
             
         case 'mega':
-            // Mega.nz requer tratamento especial (em produção, implementar decodificação)
-            showMessage('Links do Mega.nz podem requerer configuração adicional.', 'info');
-            return videoUrl;
+            return processMegaUrl(videoUrl);
             
-        default: // direct
+        case 'direct':
+            return processDirectUrl(videoUrl);
+            
+        default:
             return videoUrl;
     }
 }
 
-// Função principal para reproduzir conteúdo
+// Processar URL do Google Drive
+function processGoogleDriveUrl(url) {
+    try {
+        // Padrão 1: https://drive.google.com/file/d/FILE_ID/view
+        if (url.includes('/file/d/')) {
+            const fileId = url.split('/file/d/')[1].split('/')[0];
+            const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            console.log('✅ Google Drive - File ID encontrado:', fileId);
+            return directUrl;
+        }
+        
+        // Padrão 2: https://drive.google.com/open?id=FILE_ID
+        if (url.includes('drive.google.com/open?id=')) {
+            const fileId = url.split('id=')[1];
+            const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            console.log('✅ Google Drive - File ID encontrado (open):', fileId);
+            return directUrl;
+        }
+        
+        // Padrão 3: Já é um link direto
+        if (url.includes('uc?export=download')) {
+            console.log('✅ Google Drive - Link direto detectado');
+            return url;
+        }
+        
+        console.log('❌ Google Drive - URL não reconhecida');
+        return url;
+        
+    } catch (error) {
+        console.error('Erro ao processar Google Drive URL:', error);
+        return url;
+    }
+}
+
+// Processar URL do YouTube
+function processYouTubeUrl(url) {
+    try {
+        let videoId = '';
+        
+        // Padrão 1: https://www.youtube.com/watch?v=VIDEO_ID
+        if (url.includes('youtube.com/watch?v=')) {
+            videoId = url.split('v=')[1].split('&')[0];
+        }
+        // Padrão 2: https://youtu.be/VIDEO_ID
+        else if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1].split('?')[0];
+        }
+        // Padrão 3: https://www.youtube.com/embed/VIDEO_ID
+        else if (url.includes('youtube.com/embed/')) {
+            videoId = url.split('/embed/')[1].split('?')[0];
+        }
+        // Padrão 4: https://www.youtube.com/v/VIDEO_ID
+        else if (url.includes('youtube.com/v/')) {
+            videoId = url.split('/v/')[1].split('?')[0];
+        }
+        
+        if (videoId) {
+            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+            console.log('✅ YouTube - Video ID encontrado:', videoId);
+            return embedUrl;
+        }
+        
+        console.log('❌ YouTube - URL não reconhecida');
+        return url;
+        
+    } catch (error) {
+        console.error('Erro ao processar YouTube URL:', error);
+        return url;
+    }
+}
+
+// Processar URL do Internet Archive
+function processArchiveUrl(url) {
+    try {
+        // URLs do Internet Archive geralmente funcionam diretamente
+        // Mas podemos melhorar para links específicos
+        
+        // Se for uma página de detalhes, tentar encontrar o link direto do vídeo
+        if (url.includes('/details/') && !url.includes('/format:')) {
+            // Adicionar parâmetro para formato de vídeo
+            if (!url.includes('?output=format')) {
+                url += '?output=format';
+            }
+        }
+        
+        console.log('✅ Internet Archive - URL processada');
+        return url;
+        
+    } catch (error) {
+        console.error('Erro ao processar Archive URL:', error);
+        return url;
+    }
+}
+
+// Processar URL do Mega.nz
+function processMegaUrl(url) {
+    try {
+        // Para Mega.nz, precisamos usar um proxy ou conversor
+        if (url.includes('mega.nz/') || url.includes('mega.co.nz/')) {
+            // Extrair o file ID do Mega
+            const megaMatch = url.match(/mega\.nz\/(file|folder)\/([^#]+)#?([^#]*)/);
+            if (megaMatch) {
+                const fileId = megaMatch[2];
+                console.log('✅ Mega.nz - File ID encontrado:', fileId);
+                
+                // Usar serviço público para converter
+                // IMPORTANTE: Em produção, implemente seu próprio backend para isso
+                const convertedUrl = `https://megaserver.com/converter?url=${encodeURIComponent(url)}`;
+                showMessage('Mega.nz: Processando link...', 'info');
+                return convertedUrl;
+            }
+        }
+        
+        console.log('❌ Mega.nz - URL não reconhecida');
+        return url;
+        
+    } catch (error) {
+        console.error('Erro ao processar Mega.nz URL:', error);
+        return url;
+    }
+}
+
+// Processar URL Direta
+function processDirectUrl(url) {
+    try {
+        // Para URLs diretas, verificar se é um arquivo de vídeo
+        const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.m3u8'];
+        const isVideoFile = videoExtensions.some(ext => url.toLowerCase().includes(ext));
+        
+        if (isVideoFile) {
+            console.log('✅ URL Direta - Arquivo de vídeo detectado');
+            return url;
+        } else {
+            console.log('⚠️ URL Direta - Pode não ser um arquivo de vídeo');
+            showMessage('Verifique se a URL aponta para um arquivo de vídeo válido', 'warning');
+            return url;
+        }
+        
+    } catch (error) {
+        console.error('Erro ao processar URL direta:', error);
+        return url;
+    }
+}
+
+// Função principal para reproduzir conteúdo - VERSÃO CORRIGIDA
 function playContent(content) {
     showLoading();
+    currentPlayingContent = content;
     
     try {
         videoTitle.textContent = content.title;
@@ -525,26 +679,23 @@ function playContent(content) {
         const processedUrl = processVideoUrl(content.videoUrl, content.sourceType);
         
         console.log('🎬 Reproduzindo:', content.title);
+        console.log('🔗 URL original:', content.videoUrl);
         console.log('🔗 URL processada:', processedUrl);
+        console.log('📋 Tipo de fonte:', content.sourceType);
+        
+        // Limpar o player primeiro
+        videoPlayer.innerHTML = '';
         
         // Configurar o player baseado no tipo de conteúdo
         if (content.sourceType === 'youtube') {
             // Para YouTube, usar iframe
-            videoPlayer.innerHTML = `
-                <iframe src="${processedUrl}" 
-                        frameborder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                </iframe>
-            `;
+            setupYouTubePlayer(processedUrl, content);
+        } else if (content.sourceType === 'archive') {
+            // Para Internet Archive, tentar diferentes métodos
+            setupArchivePlayer(processedUrl, content);
         } else {
             // Para outros tipos, usar elemento video normal
-            videoPlayer.innerHTML = `
-                <video controls controlsList="nodownload">
-                    <source src="${processedUrl}" type="video/mp4">
-                    Seu navegador não suporta o elemento de vídeo.
-                </video>
-            `;
+            setupVideoPlayer(processedUrl, content);
         }
         
         videoModal.classList.remove('hidden');
@@ -553,8 +704,220 @@ function playContent(content) {
     } catch (error) {
         console.error('Erro ao reproduzir vídeo:', error);
         showMessage('Erro ao carregar o vídeo: ' + error.message, 'error');
+        setupFallbackPlayer(content);
     } finally {
         hideLoading();
+    }
+}
+
+// Configurar player do YouTube
+function setupYouTubePlayer(url, content) {
+    videoPlayer.innerHTML = `
+        <iframe 
+            src="${url}" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen
+            style="width: 100%; height: 100%;">
+        </iframe>
+    `;
+}
+
+// Configurar player do Internet Archive
+function setupArchivePlayer(url, content) {
+    // Tentar primeiro com iframe
+    videoPlayer.innerHTML = `
+        <iframe 
+            src="${url}" 
+            frameborder="0" 
+            allowfullscreen
+            style="width: 100%; height: 100%;">
+            Seu navegador não suporta iframes. 
+            <a href="${content.videoUrl}" target="_blank">Abrir no Internet Archive</a>
+        </iframe>
+    `;
+    
+    // Fallback após 3 segundos se não carregar
+    setTimeout(() => {
+        const iframe = videoPlayer.querySelector('iframe');
+        if (iframe && !iframe.contentWindow) {
+            setupVideoPlayer(url, content);
+        }
+    }, 3000);
+}
+
+// Configurar player de vídeo padrão
+function setupVideoPlayer(url, content) {
+    videoPlayer.innerHTML = `
+        <video 
+            controls 
+            controlsList="nodownload"
+            style="width: 100%; height: 100%;"
+            onerror="handleVideoError(this)"
+            onloadstart="handleVideoLoadStart(this)"
+            oncanplay="handleVideoCanPlay(this)">
+            <source src="${url}" type="video/mp4">
+            <source src="${url}" type="video/webm">
+            <source src="${url}" type="video/ogg">
+            Seu navegador não suporta o elemento de vídeo.
+            <br>
+            <a href="${content.videoUrl}" target="_blank" style="color: #008000;">
+                Tentar abrir link diretamente
+            </a>
+        </video>
+    `;
+    
+    // Tentar reproduzir automaticamente após um delay
+    setTimeout(() => {
+        const videoElement = videoPlayer.querySelector('video');
+        if (videoElement) {
+            videoElement.play().catch(e => {
+                console.log('Reprodução automática bloqueada:', e);
+                showMessage('Clique no vídeo para iniciar a reprodução', 'info');
+            });
+        }
+    }, 1000);
+}
+
+// Configurar fallback quando tudo falhar
+function setupFallbackPlayer(content) {
+    videoPlayer.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: white; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 20px; color: #ffa500;"></i>
+            <h3>Não foi possível carregar o vídeo</h3>
+            <p>O player não conseguiu reproduzir este conteúdo automaticamente.</p>
+            <div style="margin-top: 20px;">
+                <button onclick="openLinkInNewTab('${content.videoUrl}')" 
+                        style="padding: 12px 24px; background: var(--gradient-primary); border: none; border-radius: 5px; color: white; cursor: pointer; margin: 5px;">
+                    <i class="fas fa-external-link-alt"></i> Abrir em Nova Aba
+                </button>
+                <button onclick="testVideoUrl('${content.videoUrl}', '${content.sourceType}')" 
+                        style="padding: 12px 24px; background: var(--gradient-secondary); border: none; border-radius: 5px; color: white; cursor: pointer; margin: 5px;">
+                    <i class="fas fa-video"></i> Testar URL
+                </button>
+            </div>
+            <div style="margin-top: 15px; font-size: 0.9rem; color: #b3b3b3;">
+                <p><strong>URL:</strong> ${content.videoUrl}</p>
+                <p><strong>Tipo:</strong> ${SUPPORTED_SERVICES[content.sourceType]}</p>
+            </div>
+        </div>
+    `;
+    videoModal.classList.remove('hidden');
+}
+
+// Manipular eventos de vídeo
+function handleVideoError(videoElement) {
+    console.error('❌ Erro no elemento de vídeo:', videoElement.error);
+    showMessage('Erro ao carregar o vídeo. Tentando método alternativo...', 'error');
+    setupFallbackPlayer(currentPlayingContent);
+}
+
+function handleVideoLoadStart(videoElement) {
+    console.log('📥 Vídeo começando a carregar...');
+    showMessage('Carregando vídeo...', 'info');
+}
+
+function handleVideoCanPlay(videoElement) {
+    console.log('✅ Vídeo pronto para reprodução');
+    showMessage('Vídeo carregado com sucesso!', 'success');
+}
+
+// Funções auxiliares
+function openLinkInNewTab(url) {
+    window.open(url, '_blank');
+}
+
+function testVideoUrl(url, sourceType) {
+    console.log('🧪 Testando URL:', url);
+    console.log('📋 Tipo:', sourceType);
+    
+    const processedUrl = processVideoUrl(url, sourceType);
+    console.log('🔗 URL processada:', processedUrl);
+    
+    showMessage('Testando URL em nova aba...', 'info');
+    window.open(processedUrl, '_blank');
+}
+
+// Mostrar instruções de fonte
+function showSourceInstructions(sourceType) {
+    const instructions = {
+        'google_drive': `
+            <div class="source-instructions">
+                <h4><i class="fab fa-google-drive"></i> Instruções do Google Drive:</h4>
+                <ol>
+                    <li>Faça upload do vídeo para o Google Drive</li>
+                    <li>Clique com botão direito → "Compartilhar"</li>
+                    <li>Selecione "Qualquer pessoa com o link pode ver"</li>
+                    <li>Cole o link completo (ex: https://drive.google.com/file/d/SEU_FILE_ID/view)</li>
+                    <li><strong>Dica:</strong> Funciona melhor com arquivos MP4</li>
+                </ol>
+            </div>
+        `,
+        'mega': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-cloud"></i> Instruções do Mega.nz:</h4>
+                <ol>
+                    <li>Faça upload para o Mega.nz</li>
+                    <li>Clique em "Compartilhar" e copie o link</li>
+                    <li>Cole o link completo do Mega</li>
+                    <li><strong>Nota:</strong> Links do Mega podem requerer confirmação manual</li>
+                </ol>
+            </div>
+        `,
+        'youtube': `
+            <div class="source-instructions">
+                <h4><i class="fab fa-youtube"></i> Instruções do YouTube:</h4>
+                <ol>
+                    <li>Use o link completo do vídeo do YouTube</li>
+                    <li>Funciona com vídeos públicos e não-listados</li>
+                    <li>Formatos suportados:
+                        <ul>
+                            <li>https://www.youtube.com/watch?v=CODIGO</li>
+                            <li>https://youtu.be/CODIGO</li>
+                            <li>https://www.youtube.com/embed/CODIGO</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+        `,
+        'archive': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-archive"></i> Instruções do Internet Archive:</h4>
+                <ol>
+                    <li>Encontre o vídeo no archive.org</li>
+                    <li>Copie a URL da página do vídeo</li>
+                    <li>Cole o link completo</li>
+                    <li><strong>Exemplo:</strong> https://archive.org/details/NOME_DO_VIDEO</li>
+                </ol>
+            </div>
+        `,
+        'direct': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-link"></i> Instruções para URL Direta:</h4>
+                <ol>
+                    <li>Use links diretos para arquivos de vídeo</li>
+                    <li>O arquivo deve estar publicamente acessível</li>
+                    <li>Formatos suportados: MP4, WebM, OGG</li>
+                    <li><strong>Exemplo:</strong> https://exemplo.com/video.mp4</li>
+                    <li><strong>Importante:</strong> O servidor deve permitir CORS</li>
+                </ol>
+            </div>
+        `
+    };
+    
+    // Remover instruções anteriores
+    const oldInstructions = document.querySelector('.source-instructions');
+    if (oldInstructions) {
+        oldInstructions.remove();
+    }
+    
+    // Adicionar novas instruções
+    if (instructions[sourceType]) {
+        const formContainer = document.querySelector('.form-container');
+        const urlHelp = formContainer.querySelector('.url-help');
+        if (urlHelp) {
+            urlHelp.insertAdjacentHTML('afterend', instructions[sourceType]);
+        }
     }
 }
 
@@ -915,6 +1278,36 @@ style.textContent = `
         background: rgba(255,255,255,0.1); 
         border-radius: 4px; 
         font-size: 11px; 
+    }
+    .source-instructions {
+        background: rgba(0, 0, 128, 0.1);
+        padding: 15px;
+        border-radius: var(--border-radius-sm);
+        border-left: 4px solid var(--primary-color);
+        margin: 15px 0;
+        font-size: 14px;
+    }
+    .source-instructions h4 {
+        color: var(--text-color);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .source-instructions ol {
+        padding-left: 20px;
+        color: var(--text-secondary);
+    }
+    .source-instructions li {
+        margin-bottom: 5px;
+        line-height: 1.4;
+    }
+    .source-instructions ul {
+        padding-left: 20px;
+        margin-top: 5px;
+    }
+    .source-instructions strong {
+        color: var(--text-color);
     }
 `;
 document.head.appendChild(style);

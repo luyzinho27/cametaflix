@@ -1322,7 +1322,3 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-
-// Tornar funções globais para teste
-window.testVideo = testVideoSystem;
-window.debugVideo = playContent;

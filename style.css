@@ -1,4 +1,4 @@
-/* style.css - VERSÃO ATUALIZADA COM PLAYER CORRIGIDO */
+/* style.css - VERSÃO COMPLETA COM MEGA.NZ MELHORADO E THUMBNAILS */
 :root {
     --primary-color: #000080;
     --secondary-color: #008000;
@@ -458,6 +458,7 @@ form h2 {
 .content-info {
     padding: 15px;
     background: var(--bg-light);
+    position: relative;
 }
 
 .content-info h4 {
@@ -471,6 +472,22 @@ form h2 {
     font-size: 14px;
     color: var(--text-secondary);
     line-height: 1.4;
+}
+
+/* Estilos para badges de fonte */
+.content-source-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    backdrop-filter: blur(10px);
 }
 
 /* Modal */
@@ -856,6 +873,43 @@ form h2 {
     margin-bottom: 5px;
 }
 
+/* Grid de opções do Mega.nz */
+.mega-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.mega-option-btn {
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.mega-option-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Placeholders específicos para serviços */
+.thumbnail-placeholder {
+    background: linear-gradient(135deg, #1a1a2a 0%, #16213e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .navbar {
@@ -920,6 +974,11 @@ form h2 {
     .video-container {
         height: 300px;
     }
+    
+    .content-source-badge {
+        font-size: 8px;
+        padding: 3px 6px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -937,6 +996,10 @@ form h2 {
     }
     
     .video-container {
+        height: 250px;
+    }
+    
+    .content-item img {
         height: 250px;
     }
 }
@@ -975,4 +1038,3 @@ form h2 {
     animation: spin 1s linear infinite;
     margin: 0 auto 15px;
 }
-

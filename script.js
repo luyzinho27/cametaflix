@@ -1,4 +1,4 @@
-// script.js - VERSÃO COMPLETA COM MEGA.NZ CORRIGIDO E PLAYER OTIMIZADO
+// script.js - VERSÃO COMPLETA COM MEGA.NZ MELHORADO E THUMBNAILS
 // Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLPLXCc6JRfP43xDjL2j-GWwtMYLLY3Gk",
@@ -101,6 +101,68 @@ window.addEventListener('click', (e) => {
     if (e.target === videoModal) closeVideoPlayer();
     if (e.target === infoModal) infoModal.classList.add('hidden');
 });
+
+// =============================================
+// SISTEMA DE THUMBNAILS MELHORADO
+// =============================================
+
+// Função para processar thumbnails de diferentes fontes
+function processThumbnailUrl(url, sourceType) {
+    console.log('🖼️ Processando thumbnail:', url, sourceType);
+    
+    // Se já for uma URL direta de imagem, retorna como está
+    if (isDirectImageUrl(url)) {
+        return url;
+    }
+    
+    // Processar baseado no tipo de fonte
+    switch(sourceType) {
+        case 'google_drive':
+            return processGoogleDriveThumbnail(url);
+        case 'mega':
+            return processMegaThumbnail(url);
+        default:
+            return url; // Retorna original se não souber processar
+    }
+}
+
+// Verificar se é URL direta de imagem
+function isDirectImageUrl(url) {
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+    return imageExtensions.some(ext => url.toLowerCase().includes(ext));
+}
+
+// Processar thumbnail do Google Drive
+function processGoogleDriveThumbnail(url) {
+    const fileId = getGoogleDriveId(url);
+    if (fileId) {
+        // Google Drive oferece thumbnails em diferentes tamanhos
+        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
+    }
+    return url;
+}
+
+// Processar thumbnail do Mega.nz (limitações - usar placeholder)
+function processMegaThumbnail(url) {
+    const megaInfo = extractMegaInfo(url);
+    if (megaInfo) {
+        // Mega.nz não fornece thumbnails públicas, usar placeholder baseado no tipo
+        return `https://via.placeholder.com/300x450/1a1a2a/FFFFFF?text=MEGA+${megaInfo.fileType || 'VIDEO'}`;
+    }
+    return 'https://via.placeholder.com/300x450/1a1a2a/FFFFFF?text=MEGA+VIDEO';
+}
+
+// Ícone para cada tipo de fonte
+function getSourceIcon(sourceType) {
+    const icons = {
+        'youtube': 'youtube',
+        'google_drive': 'google-drive',
+        'mega': 'cloud',
+        'direct': 'link',
+        'archive': 'archive'
+    };
+    return icons[sourceType] || 'video';
+}
 
 // =============================================
 // SISTEMA DE VÍDEO COM CONTROLE DE PLAYER
@@ -370,7 +432,7 @@ function showArchiveError() {
 }
 
 // =============================================
-// SISTEMA MEGA.NZ CORRIGIDO
+// SISTEMA MEGA.NZ MELHORADO
 // =============================================
 
 function loadMega(url, container, placeholder) {
@@ -386,7 +448,19 @@ function loadMega(url, container, placeholder) {
         return;
     }
     
-    // Mostrar informações do arquivo
+    // Tentar métodos alternativos primeiro
+    tryMegaAlternatives(megaInfo, url, container);
+}
+
+function tryMegaAlternatives(megaInfo, originalUrl, container) {
+    console.log('🔄 Tentando métodos alternativos para Mega.nz...');
+    
+    // Método 1: Tentar via serviço de proxy/conversor
+    const proxyUrl = `https://megasf.net/mega.html#${megaInfo.fileId}${megaInfo.key ? `!${megaInfo.key}` : ''}`;
+    
+    // Método 2: Tentar via embed limitado
+    const embedUrl = `https://mega.nz/embed/${megaInfo.fileId}${megaInfo.key ? `#${megaInfo.key}` : ''}`;
+    
     container.innerHTML = `
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 30px; background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);">
             <i class="fas fa-cloud-download-alt" style="font-size: 4rem; color: #00aaff; margin-bottom: 20px;"></i>
@@ -401,92 +475,95 @@ function loadMega(url, container, placeholder) {
             </div>
             
             <p style="color: #ccc; margin-bottom: 25px; max-width: 600px;">
-                O Mega.nz possui proteções contra reprodução direta em players.<br>
-                Use uma das opções abaixo para acessar o conteúdo:
+                Escolha o método preferido para acessar este conteúdo:
             </p>
             
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-bottom: 25px;">
-                <button onclick="openMegaLink('${url}')" 
-                        style="padding: 15px 25px; background: #00aaff; border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-external-link-alt"></i> Abrir no Mega.nz
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; width: 100%; max-width: 800px; margin-bottom: 25px;">
+                <button onclick="openMegaLink('${originalUrl}')" 
+                        style="padding: 15px; background: #00aaff; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                    <i class="fas fa-external-link-alt" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <strong>Abrir no Mega.nz</strong>
+                        <div style="font-size: 0.8rem; opacity: 0.9;">Player oficial</div>
+                    </div>
                 </button>
                 
-                <button onclick="downloadMegaFile('${url}')" 
-                        style="padding: 15px 25px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-download"></i> Download Direto
+                <button onclick="tryMegaEmbed('${embedUrl}')" 
+                        style="padding: 15px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                    <i class="fas fa-play-circle" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <strong>Tentar Player</strong>
+                        <div style="font-size: 0.8rem; opacity: 0.9;">Embed experimental</div>
+                    </div>
                 </button>
                 
-                <button onclick="copyMegaUrl('${url}')" 
-                        style="padding: 15px 25px; background: #FF9800; border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-copy"></i> Copiar URL
+                <button onclick="downloadMegaFile('${originalUrl}')" 
+                        style="padding: 15px; background: #FF9800; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                    <i class="fas fa-download" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <strong>Download</strong>
+                        <div style="font-size: 0.8rem; opacity: 0.9;">Assistir localmente</div>
+                    </div>
+                </button>
+                
+                <button onclick="tryMegaProxy('${proxyUrl}')" 
+                        style="padding: 15px; background: #9C27B0; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                    <i class="fas fa-link" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <strong>Proxy Online</strong>
+                        <div style="font-size: 0.8rem; opacity: 0.9;">Serviço externo</div>
+                    </div>
                 </button>
             </div>
             
             <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; max-width: 600px;">
-                <h4 style="color: #00aaff; margin-bottom: 15px;">💡 Dicas para Mega.nz:</h4>
+                <h4 style="color: #00aaff; margin-bottom: 15px;">💡 Recomendações:</h4>
                 <ul style="text-align: left; color: #ccc; line-height: 1.6; font-size: 0.9rem;">
-                    <li><strong>Opção 1:</strong> Use "Abrir no Mega.nz" para assistir no player oficial</li>
-                    <li><strong>Opção 2:</strong> Faça o download e assista localmente</li>
-                    <li><strong>Opção 3:</strong> Use um conversor online de Mega.nz para link direto</li>
-                    <li>Arquivos grandes podem requerer o app do Mega para melhor experiência</li>
+                    <li><strong>Para melhor experiência:</strong> Use o app oficial do Mega.nz</li>
+                    <li><strong>Para arquivos grandes:</strong> Faça download e assista localmente</li>
+                    <li><strong>Problemas com embedding:</strong> Tente o serviço de proxy</li>
+                    <li>Alguns navegadores podem bloquear a reprodução automática</li>
                 </ul>
             </div>
         </div>
     `;
 }
 
-// Extrair informações do link Mega.nz
-function extractMegaInfo(url) {
-    try {
-        console.log('🔍 Analisando URL do Mega:', url);
-        
-        // Padrões comuns do Mega.nz
-        const patterns = [
-            /mega\.nz\/(file|folder)\/([^#]+)#([^#]+)/, // Com chave
-            /mega\.nz\/(file|folder)\/([^#\s]+)/,        // Sem chave
-        ];
-        
-        for (let pattern of patterns) {
-            const match = url.match(pattern);
-            if (match) {
-                const type = match[1]; // file ou folder
-                const fileId = match[2];
-                const key = match[3] || null;
-                
-                console.log('✅ Mega.nz detectado:', { type, fileId, key });
-                
-                return {
-                    type: type,
-                    fileId: fileId,
-                    key: key,
-                    filename: extractFilenameFromUrl(url),
-                    fileType: 'Vídeo'
-                };
-            }
-        }
-        
-        return null;
-    } catch (error) {
-        console.error('Erro ao extrair info do Mega:', error);
-        return null;
-    }
+// Novas funções para métodos alternativos
+function tryMegaEmbed(embedUrl) {
+    console.log('🎬 Tentando embed do Mega:', embedUrl);
+    const container = document.getElementById('video-container');
+    
+    container.innerHTML = `
+        <iframe 
+            id="mega-embed"
+            src="${embedUrl}"
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allowfullscreen
+            style="border: none;"
+            onload="console.log('✅ Embed Mega carregado')"
+            onerror="showMegaEmbedError()">
+        </iframe>
+    `;
+    
+    currentIframeElement = document.getElementById('mega-embed');
+    showMessage('Carregando player experimental do Mega...', 'info');
 }
 
-// Tentar extrair nome do arquivo da URL
-function extractFilenameFromUrl(url) {
-    try {
-        // Tenta encontrar o nome após o último /
-        const parts = url.split('/');
-        const lastPart = parts[parts.length - 1];
-        
-        // Remove parâmetros e fragments
-        const cleanName = lastPart.split('?')[0].split('#')[0];
-        
-        // Se for muito longo, trunca
-        return cleanName.length > 30 ? cleanName.substring(0, 30) + '...' : cleanName;
-    } catch (error) {
-        return 'Arquivo do Mega.nz';
-    }
+function tryMegaProxy(proxyUrl) {
+    console.log('🔗 Abrindo proxy Mega:', proxyUrl);
+    window.open(proxyUrl, '_blank');
+    showMessage('Abrindo através de serviço proxy...', 'info');
+}
+
+function showMegaEmbedError() {
+    const container = document.getElementById('video-container');
+    const url = currentPlayingContent.videoUrl;
+    showMessage('Embed do Mega não funcionou. Tente outra opção.', 'warning');
+    // Recarregar as opções
+    loadMega(url, container, null);
 }
 
 // Funções de ação para Mega.nz
@@ -562,6 +639,68 @@ function testMegaUrl(url) {
     console.log('🧪 Testando URL do Mega:', url);
     window.open(url, '_blank');
     showMessage('Testando URL do Mega.nz...', 'info');
+}
+
+// Extrair informações do link Mega.nz
+function extractMegaInfo(url) {
+    try {
+        console.log('🔍 Analisando URL do Mega:', url);
+        
+        // Padrões comuns do Mega.nz
+        const patterns = [
+            /mega\.nz\/(file|folder)\/([^#]+)#([^#\s]+)/, // Com chave
+            /mega\.nz\/(file|folder)\/([^#\s?]+)/,        // Sem chave
+            /mega\.nz\/(file|folder)\/([^#\s?]+)\?/       // Com parâmetros
+        ];
+        
+        for (let pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) {
+                const type = match[1]; // file ou folder
+                const fileId = match[2];
+                const key = match[3] || null;
+                
+                console.log('✅ Mega.nz detectado:', { type, fileId, key });
+                
+                // Determinar tipo de arquivo baseado na URL
+                let fileType = 'Vídeo';
+                if (url.match(/\.(mp4|avi|mkv|mov|wmv)$/i)) fileType = 'Vídeo';
+                else if (url.match(/\.(jpg|jpeg|png|gif)$/i)) fileType = 'Imagem';
+                else if (url.match(/\.(mp3|wav|flac)$/i)) fileType = 'Áudio';
+                
+                return {
+                    type: type,
+                    fileId: fileId,
+                    key: key,
+                    filename: extractFilenameFromUrl(url),
+                    fileType: fileType,
+                    directUrl: `https://mega.nz/${type}/${fileId}${key ? `#${key}` : ''}`
+                };
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do Mega:', error);
+        return null;
+    }
+}
+
+// Tentar extrair nome do arquivo da URL
+function extractFilenameFromUrl(url) {
+    try {
+        // Tenta encontrar o nome após o último /
+        const parts = url.split('/');
+        const lastPart = parts[parts.length - 1];
+        
+        // Remove parâmetros e fragments
+        const cleanName = lastPart.split('?')[0].split('#')[0];
+        
+        // Se for muito longo, trunca
+        return cleanName.length > 30 ? cleanName.substring(0, 30) + '...' : cleanName;
+    } catch (error) {
+        return 'Arquivo do Mega.nz';
+    }
 }
 
 // Carregamento universal
@@ -1024,12 +1163,20 @@ function loadContent() {
 function createContentItem(content) {
     const contentItem = document.createElement('div');
     contentItem.className = 'content-item';
+    
+    // Processar thumbnail baseado na fonte do conteúdo
+    const processedThumbnail = processThumbnailUrl(content.thumbnail, content.sourceType);
+    
     contentItem.innerHTML = `
-        <img src="${content.thumbnail}" alt="${content.title}" 
+        <img src="${processedThumbnail}" alt="${content.title}" 
              onerror="this.src='https://via.placeholder.com/300x450/333333/FFFFFF?text=Imagem+Não+Disponível'">
         <div class="content-info">
             <h4>${content.title}</h4>
             <p>${content.description.substring(0, 80)}...</p>
+            <div class="content-source-badge">
+                <i class="fas fa-${getSourceIcon(content.sourceType)}"></i>
+                ${SUPPORTED_SERVICES[content.sourceType] || content.sourceType}
+            </div>
         </div>
     `;
     
@@ -1073,7 +1220,9 @@ function updateFeaturedContent() {
     if (featuredContent) {
         featuredTitle.textContent = featuredContent.title;
         featuredDescription.textContent = featuredContent.description;
-        featuredSection.style.backgroundImage = `linear-gradient(to top, var(--bg-darker) 0%, transparent 60%), url('${featuredContent.thumbnail}')`;
+        // Processar thumbnail para a seção em destaque também
+        const processedThumbnail = processThumbnailUrl(featuredContent.thumbnail, featuredContent.sourceType);
+        featuredSection.style.backgroundImage = `linear-gradient(to top, var(--bg-darker) 0%, transparent 60%), url('${processedThumbnail}')`;
     }
 }
 
@@ -1101,33 +1250,21 @@ function showSourceInstructions(sourceType) {
         'google_drive': `
             <div class="source-instructions">
                 <h4><i class="fab fa-google-drive"></i> Google Drive:</h4>
-                <p><strong>Link correto:</strong> https://drive.google.com/file/d/FILE_ID/view</p>
-                <p><strong>Verifique:</strong> Arquivo compartilhado publicamente</p>
+                <p><strong>Link do vídeo:</strong> https://drive.google.com/file/d/FILE_ID/view</p>
+                <p><strong>Thumbnail:</strong> Use o mesmo link do vídeo ou link direto de imagem</p>
+                <p><strong>Verifique:</strong> Arquivo compartilhado como "Qualquer pessoa com o link pode ver"</p>
             </div>
         `,
         'youtube': `
             <div class="source-instructions">
                 <h4><i class="fab fa-youtube"></i> YouTube:</h4>
-                <p>Qualquer link do YouTube funciona</p>
-                <p><strong>Exemplos:</strong></p>
+                <p><strong>Link do vídeo:</strong> Qualquer link do YouTube</p>
+                <p><strong>Thumbnail:</strong> Use thumbnails do YouTube ou imagens personalizadas</p>
+                <p><strong>Exemplos de vídeo:</strong></p>
                 <ul>
                     <li>https://www.youtube.com/watch?v=CODIGO</li>
                     <li>https://youtu.be/CODIGO</li>
                 </ul>
-            </div>
-        `,
-        'archive': `
-            <div class="source-instructions">
-                <h4><i class="fas fa-archive"></i> Internet Archive:</h4>
-                <p>Cole a URL completa da página do vídeo</p>
-                <p><strong>Exemplo:</strong> https://archive.org/details/NOME_DO_VIDEO</p>
-            </div>
-        `,
-        'direct': `
-            <div class="source-instructions">
-                <h4><i class="fas fa-link"></i> URL Direta:</h4>
-                <p>Link direto para arquivo de vídeo (MP4, WebM)</p>
-                <p><strong>Exemplo:</strong> https://site.com/video.mp4</p>
             </div>
         `,
         'mega': `
@@ -1138,12 +1275,31 @@ function showSourceInstructions(sourceType) {
                     <li>https://mega.nz/file/FILE_ID#FILE_KEY</li>
                     <li>https://mega.nz/folder/FOLDER_ID#FOLDER_KEY</li>
                 </ul>
+                <p><strong>Thumbnail:</strong> Use imagens de outras fontes (Mega não fornece thumbnails públicas)</p>
                 <p><strong>Limitações:</strong></p>
                 <ul>
                     <li>Não suporta reprodução direta em players</li>
                     <li>Requer interação manual do usuário</li>
                     <li>Recomendado para downloads</li>
+                    <li>Thumbnails serão substituídas por placeholders</li>
                 </ul>
+            </div>
+        `,
+        'direct': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-link"></i> URL Direta:</h4>
+                <p><strong>Vídeo:</strong> Link direto para MP4, WebM, etc.</p>
+                <p><strong>Thumbnail:</strong> Link direto para JPG, PNG, etc.</p>
+                <p><strong>Exemplo vídeo:</strong> https://site.com/video.mp4</p>
+                <p><strong>Exemplo thumbnail:</strong> https://site.com/thumb.jpg</p>
+            </div>
+        `,
+        'archive': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-archive"></i> Internet Archive:</h4>
+                <p><strong>Vídeo:</strong> URL completa da página do vídeo</p>
+                <p><strong>Thumbnail:</strong> Use thumbnails do Archive ou imagens personalizadas</p>
+                <p><strong>Exemplo:</strong> https://archive.org/details/NOME_DO_VIDEO</p>
             </div>
         `
     };
@@ -1561,5 +1717,76 @@ style.textContent = `
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+    
+    /* Estilos para badges de fonte */
+    .content-source-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .content-item {
+        position: relative;
+    }
+    
+    /* Grid de opções do Mega.nz */
+    .mega-options-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        width: 100%;
+        max-width: 800px;
+    }
+    
+    .mega-option-btn {
+        padding: 15px;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .mega-option-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    
+    /* Placeholders específicos para serviços */
+    .thumbnail-placeholder {
+        background: linear-gradient(135deg, #1a1a2a 0%, #16213e 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+    }
 `;
 document.head.appendChild(style);
+
+// Tornar funções globais para uso no HTML
+window.openMegaLink = openMegaLink;
+window.downloadMegaFile = downloadMegaFile;
+window.copyMegaUrl = copyMegaUrl;
+window.tryMegaEmbed = tryMegaEmbed;
+window.tryMegaProxy = tryMegaProxy;
+window.testMegaUrl = testMegaUrl;
+window.openLinkDirectly = openLinkDirectly;
+window.testInNewTab = testInNewTab;
+window.copyUrl = copyUrl;
+window.editUserRole = editUserRole;
+window.deleteUser = deleteUser;
+window.editContent = editContent;
+window.deleteContent = deleteContent;

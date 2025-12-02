@@ -1,4 +1,4 @@
-// script.js - VERSÃO COMPLETA COM MEGA.NZ MELHORADO E THUMBNAILS
+// script.js - VERSÃO COMPLETA COM PLAYER UNIFICADO NETFLIX-STYLE
 // Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLPLXCc6JRfP43xDjL2j-GWwtMYLLY3Gk",
@@ -14,7 +14,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Elementos da DOM
+// Elementos da DOM - PLAYER UNIFICADO
 const loginScreen = document.getElementById('login-screen');
 const registerScreen = document.getElementById('register-screen');
 const mainScreen = document.getElementById('main-screen');
@@ -28,7 +28,6 @@ const adminPanelLink = document.getElementById('admin-panel-link');
 const adminPanel = document.getElementById('admin-panel');
 const contentGrid = document.getElementById('content-grid');
 const videoModal = document.getElementById('video-modal');
-const videoPlayer = document.getElementById('video-player');
 const videoTitle = document.getElementById('video-title');
 const videoDescription = document.getElementById('video-description');
 const closeModal = document.querySelector('.close-modal');
@@ -55,6 +54,16 @@ const infoDate = document.getElementById('info-date');
 const infoSource = document.getElementById('info-source');
 const loading = document.getElementById('loading');
 
+// Elementos do player unificado
+const netflixPlayer = document.getElementById('netflix-player');
+const unifiedVideoPlayer = document.getElementById('unified-video-player');
+const playerControls = document.getElementById('player-controls');
+const playPauseBtn = document.getElementById('play-pause-btn');
+const muteBtn = document.getElementById('mute-btn');
+const progressBar = document.getElementById('progress-bar');
+const timeDisplay = document.getElementById('time-display');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+
 // Variáveis globais
 let currentUser = null;
 let isAdmin = false;
@@ -62,8 +71,9 @@ let currentContent = [];
 let featuredContent = null;
 let allUsers = [];
 let currentPlayingContent = null;
-let currentVideoElement = null;
-let currentIframeElement = null;
+let isPlaying = false;
+let isMuted = false;
+let playerInitialized = false;
 
 // Serviços de hospedagem gratuita suportados
 const SUPPORTED_SERVICES = {
@@ -74,7 +84,10 @@ const SUPPORTED_SERVICES = {
   'mega': 'Mega.nz'
 };
 
-// Event Listeners
+// =============================================
+// INICIALIZAÇÃO E EVENT LISTENERS
+// =============================================
+
 document.addEventListener('DOMContentLoaded', initApp);
 loginForm.addEventListener('submit', handleLogin);
 registerForm.addEventListener('submit', handleRegister);
@@ -102,11 +115,423 @@ window.addEventListener('click', (e) => {
     if (e.target === infoModal) infoModal.classList.add('hidden');
 });
 
+// Inicializar controles do player quando disponíveis
+function initPlayerControls() {
+    if (!playerInitialized && unifiedVideoPlayer) {
+        // Event listeners para o player unificado
+        unifiedVideoPlayer.addEventListener('timeupdate', updateProgress);
+        unifiedVideoPlayer.addEventListener('loadedmetadata', updateTimeDisplay);
+        unifiedVideoPlayer.addEventListener('play', () => {
+            isPlaying = true;
+            updatePlayPauseButton();
+        });
+        unifiedVideoPlayer.addEventListener('pause', () => {
+            isPlaying = false;
+            updatePlayPauseButton();
+        });
+        unifiedVideoPlayer.addEventListener('volumechange', updateMuteButton);
+        
+        // Event listeners para os botões de controle
+        if (playPauseBtn) {
+            playPauseBtn.addEventListener('click', togglePlayPause);
+        }
+        if (muteBtn) {
+            muteBtn.addEventListener('click', toggleMute);
+        }
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+        }
+        
+        // Event listener para a barra de progresso
+        const progressContainer = document.querySelector('.progress-container');
+        if (progressContainer) {
+            progressContainer.addEventListener('click', (e) => {
+                const rect = progressContainer.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                if (unifiedVideoPlayer.duration) {
+                    unifiedVideoPlayer.currentTime = percent * unifiedVideoPlayer.duration;
+                }
+            });
+        }
+        
+        playerInitialized = true;
+        console.log('✅ Controles do player inicializados');
+    }
+}
+
 // =============================================
-// SISTEMA DE THUMBNAILS MELHORADO
+// SISTEMA DE PLAYER UNIFICADO NETFLIX-STYLE
 // =============================================
 
-// Função para processar thumbnails de diferentes fontes
+// Função principal para reproduzir conteúdo
+function playContent(content) {
+    console.log('🎬 PLAY CONTENT CHAMADO:', content);
+    currentPlayingContent = content;
+    
+    // Atualizar informações do modal
+    videoTitle.textContent = content.title;
+    videoDescription.textContent = content.description;
+    
+    // Mostrar modal primeiro
+    videoModal.classList.remove('hidden');
+    
+    // Resetar player
+    resetPlayer();
+    
+    // Aguardar um pouco para o modal renderizar e inicializar controles
+    setTimeout(() => {
+        initPlayerControls();
+        loadVideoContent(content);
+    }, 100);
+}
+
+// Resetar player para estado inicial
+function resetPlayer() {
+    if (unifiedVideoPlayer) {
+        unifiedVideoPlayer.pause();
+        unifiedVideoPlayer.src = '';
+        unifiedVideoPlayer.load();
+        isPlaying = false;
+        updatePlayPauseButton();
+        if (progressBar) progressBar.style.width = '0%';
+        if (timeDisplay) timeDisplay.textContent = '0:00 / 0:00';
+    }
+    
+    // Esconder player unificado e mostrar placeholder
+    if (netflixPlayer) netflixPlayer.style.display = 'none';
+    if (playerControls) playerControls.style.display = 'none';
+    
+    const placeholder = document.getElementById('video-placeholder');
+    if (placeholder) {
+        placeholder.style.display = 'flex';
+        placeholder.innerHTML = `
+            <div class="loading-spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid #e50914; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+            <h3>Preparando player...</h3>
+            <p style="color: #ccc;">Por favor aguarde...</p>
+        `;
+    }
+}
+
+// Carregar conteúdo no player unificado
+function loadVideoContent(content) {
+    const placeholder = document.getElementById('video-placeholder');
+    
+    console.log('📦 Carregando conteúdo:', content.sourceType);
+    console.log('🔗 URL:', content.videoUrl);
+    
+    // Mostrar que está processando
+    if (placeholder) {
+        placeholder.innerHTML = `
+            <div class="loading-spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid #e50914; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+            <h3>Processando ${content.sourceType}...</h3>
+            <p style="color: #ccc;">Por favor aguarde...</p>
+        `;
+    }
+
+    // Processar baseado no tipo
+    switch(content.sourceType) {
+        case 'youtube':
+            processYouTube(content.videoUrl);
+            break;
+        case 'google_drive':
+            processGoogleDrive(content.videoUrl);
+            break;
+        case 'direct':
+            processDirectVideo(content.videoUrl);
+            break;
+        case 'archive':
+            processArchive(content.videoUrl);
+            break;
+        case 'mega':
+            // SEMPRE usar o player experimental para Mega.nz
+            processMega(content.videoUrl);
+            break;
+        default:
+            processDirectVideo(content.videoUrl);
+    }
+}
+
+// Processar YouTube - Converter para URL direta via proxy
+function processYouTube(url) {
+    console.log('🔧 Processando YouTube...');
+    
+    const videoId = getYouTubeId(url);
+    if (!videoId) {
+        showError('ID do YouTube não encontrado', url, 'YouTube');
+        return;
+    }
+    
+    // Tentar usar serviço de proxy CORS para obter stream direto
+    const proxyUrl = `https://cors-anywhere.herokuapp.com/https://www.youtube.com/watch?v=${videoId}`;
+    
+    // URL alternativa de stream (pode não funcionar para todos os vídeos)
+    const streamUrl = `https://yewtu.be/latest_version?id=${videoId}&itag=22`;
+    
+    unifiedVideoPlayer.src = streamUrl;
+    unifiedVideoPlayer.load();
+    
+    unifiedVideoPlayer.oncanplay = () => {
+        showPlayer();
+        unifiedVideoPlayer.play().catch(e => {
+            console.log('⚠️ Autoplay bloqueado, mas vídeo carregado');
+            showPlayer();
+        });
+    };
+    
+    unifiedVideoPlayer.onerror = () => {
+        // Fallback para iframe se stream direto falhar
+        fallbackToIframe(`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&controls=0`);
+    };
+}
+
+// Processar Google Drive - Tentar obter link direto
+function processGoogleDrive(url) {
+    console.log('🔧 Processando Google Drive...');
+    
+    const fileId = getGoogleDriveId(url);
+    if (!fileId) {
+        showError('ID do Google Drive não encontrado', url, 'Google Drive');
+        return;
+    }
+    
+    // URL direta para download (pode funcionar para alguns vídeos)
+    const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    
+    unifiedVideoPlayer.src = directUrl;
+    unifiedVideoPlayer.load();
+    
+    unifiedVideoPlayer.oncanplay = () => {
+        showPlayer();
+        unifiedVideoPlayer.play().catch(e => {
+            console.log('⚠️ Autoplay bloqueado');
+            showPlayer();
+        });
+    };
+    
+    unifiedVideoPlayer.onerror = () => {
+        // Fallback para iframe de preview
+        fallbackToIframe(`https://drive.google.com/file/d/${fileId}/preview`);
+    };
+}
+
+// Processar vídeo direto
+function processDirectVideo(url) {
+    console.log('🔧 Processando vídeo direto...');
+    
+    unifiedVideoPlayer.src = url;
+    unifiedVideoPlayer.load();
+    
+    unifiedVideoPlayer.oncanplay = () => {
+        showPlayer();
+        unifiedVideoPlayer.play().catch(e => {
+            console.log('⚠️ Autoplay bloqueado');
+            showPlayer();
+        });
+    };
+    
+    unifiedVideoPlayer.onerror = () => {
+        showError('Vídeo direto não pôde ser carregado', url, 'Vídeo Direto');
+    };
+}
+
+// Processar Mega.nz - SEMPRE USAR PLAYER EXPERIMENTAL POR PADRÃO
+function processMega(url) {
+    console.log('🔧 Processando Mega.nz...');
+    
+    const megaInfo = extractMegaInfo(url);
+    
+    if (!megaInfo) {
+        showError('Link do Mega.nz inválido', url, 'Mega.nz');
+        return;
+    }
+    
+    // SEMPRE usar o embed experimental por padrão
+    const embedUrl = `https://mega.nz/embed/${megaInfo.fileId}${megaInfo.key ? `#${megaInfo.key}` : ''}`;
+    
+    // Esconder player unificado e usar iframe do Mega
+    if (netflixPlayer) netflixPlayer.style.display = 'none';
+    if (playerControls) playerControls.style.display = 'none';
+    
+    const videoContainer = document.getElementById('video-container');
+    const placeholder = document.getElementById('video-placeholder');
+    
+    if (videoContainer) {
+        videoContainer.innerHTML = `
+            <iframe 
+                id="mega-iframe"
+                src="${embedUrl}"
+                width="100%" 
+                height="100%" 
+                frameborder="0" 
+                allowfullscreen
+                style="border: none; position: absolute; top: 0; left: 0;"
+                onload="console.log('✅ Mega.nz embed carregado')">
+            </iframe>
+        `;
+    }
+    
+    if (placeholder) placeholder.style.display = 'none';
+}
+
+// Processar Archive.org
+function processArchive(url) {
+    console.log('🔧 Processando Internet Archive...');
+    
+    // Tentar encontrar link de vídeo direto na página do Archive
+    if (url.includes('archive.org/details/')) {
+        const videoId = url.split('/details/')[1].split('/')[0];
+        const directUrl = `https://archive.org/download/${videoId}/${videoId}.mp4`;
+        
+        unifiedVideoPlayer.src = directUrl;
+        unifiedVideoPlayer.load();
+        
+        unifiedVideoPlayer.oncanplay = () => {
+            showPlayer();
+            unifiedVideoPlayer.play().catch(e => {
+                console.log('⚠️ Autoplay bloqueado');
+                showPlayer();
+            });
+        };
+        
+        unifiedVideoPlayer.onerror = () => {
+            // Fallback para página original
+            fallbackToIframe(url);
+        };
+    } else {
+        fallbackToIframe(url);
+    }
+}
+
+// Fallback para iframe (quando stream direto não funciona)
+function fallbackToIframe(embedUrl) {
+    console.log('🔄 Usando fallback iframe:', embedUrl);
+    
+    // Esconder player unificado
+    if (netflixPlayer) netflixPlayer.style.display = 'none';
+    if (playerControls) playerControls.style.display = 'none';
+    
+    const videoContainer = document.getElementById('video-container');
+    const placeholder = document.getElementById('video-placeholder');
+    
+    if (videoContainer) {
+        videoContainer.innerHTML = `
+            <iframe 
+                src="${embedUrl}"
+                width="100%" 
+                height="100%" 
+                frameborder="0" 
+                allowfullscreen
+                style="border: none; position: absolute; top: 0; left: 0;"
+                onload="if(placeholder) placeholder.style.display='none';">
+            </iframe>
+        `;
+    }
+    
+    if (placeholder) placeholder.style.display = 'none';
+}
+
+// Mostrar player unificado
+function showPlayer() {
+    const placeholder = document.getElementById('video-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+    if (netflixPlayer) netflixPlayer.style.display = 'block';
+    if (playerControls) playerControls.style.display = 'block';
+    updatePlayPauseButton();
+}
+
+// =============================================
+// CONTROLES DO PLAYER UNIFICADO
+// =============================================
+
+function togglePlayPause() {
+    if (unifiedVideoPlayer && unifiedVideoPlayer.src) {
+        if (isPlaying) {
+            unifiedVideoPlayer.pause();
+        } else {
+            unifiedVideoPlayer.play().catch(e => {
+                console.log('Erro ao reproduzir:', e);
+            });
+        }
+        isPlaying = !isPlaying;
+        updatePlayPauseButton();
+    }
+}
+
+function updatePlayPauseButton() {
+    if (playPauseBtn) {
+        const icon = playPauseBtn.querySelector('i');
+        if (icon) {
+            icon.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+        }
+    }
+}
+
+function toggleMute() {
+    if (unifiedVideoPlayer && unifiedVideoPlayer.src) {
+        isMuted = !isMuted;
+        unifiedVideoPlayer.muted = isMuted;
+        updateMuteButton();
+    }
+}
+
+function updateMuteButton() {
+    if (muteBtn) {
+        const icon = muteBtn.querySelector('i');
+        if (icon) {
+            icon.className = isMuted ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+        }
+    }
+}
+
+function toggleFullscreen() {
+    const videoContainer = document.getElementById('video-container');
+    if (videoContainer) {
+        if (!document.fullscreenElement) {
+            if (videoContainer.requestFullscreen) {
+                videoContainer.requestFullscreen();
+            } else if (videoContainer.webkitRequestFullscreen) {
+                videoContainer.webkitRequestFullscreen();
+            } else if (videoContainer.msRequestFullscreen) {
+                videoContainer.msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+    }
+}
+
+function updateProgress() {
+    if (unifiedVideoPlayer && unifiedVideoPlayer.src && unifiedVideoPlayer.duration && progressBar) {
+        const progress = (unifiedVideoPlayer.currentTime / unifiedVideoPlayer.duration) * 100;
+        progressBar.style.width = `${progress}%`;
+        updateTimeDisplay();
+    }
+}
+
+function updateTimeDisplay() {
+    if (unifiedVideoPlayer && unifiedVideoPlayer.src && unifiedVideoPlayer.duration && timeDisplay) {
+        const currentTime = formatTime(unifiedVideoPlayer.currentTime);
+        const totalTime = formatTime(unifiedVideoPlayer.duration);
+        timeDisplay.textContent = `${currentTime} / ${totalTime}`;
+    }
+}
+
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+// =============================================
+// SISTEMA DE THUMBNAILS (SEM BADGES PARA USUÁRIOS COMUNS)
+// =============================================
+
 function processThumbnailUrl(url, sourceType) {
     console.log('🖼️ Processando thumbnail:', url, sourceType);
     
@@ -122,37 +547,27 @@ function processThumbnailUrl(url, sourceType) {
         case 'mega':
             return processMegaThumbnail(url);
         default:
-            return url; // Retorna original se não souber processar
+            return url;
     }
 }
 
-// Verificar se é URL direta de imagem
 function isDirectImageUrl(url) {
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
     return imageExtensions.some(ext => url.toLowerCase().includes(ext));
 }
 
-// Processar thumbnail do Google Drive
 function processGoogleDriveThumbnail(url) {
     const fileId = getGoogleDriveId(url);
     if (fileId) {
-        // Google Drive oferece thumbnails em diferentes tamanhos
         return `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
     }
     return url;
 }
 
-// Processar thumbnail do Mega.nz (limitações - usar placeholder)
 function processMegaThumbnail(url) {
-    const megaInfo = extractMegaInfo(url);
-    if (megaInfo) {
-        // Mega.nz não fornece thumbnails públicas, usar placeholder baseado no tipo
-        return `https://via.placeholder.com/300x450/1a1a2a/FFFFFF?text=MEGA+${megaInfo.fileType || 'VIDEO'}`;
-    }
     return 'https://via.placeholder.com/300x450/1a1a2a/FFFFFF?text=MEGA+VIDEO';
 }
 
-// Ícone para cada tipo de fonte
 function getSourceIcon(sourceType) {
     const icons = {
         'youtube': 'youtube',
@@ -165,591 +580,9 @@ function getSourceIcon(sourceType) {
 }
 
 // =============================================
-// SISTEMA DE VÍDEO COM CONTROLE DE PLAYER
+// FUNÇÕES AUXILIARES
 // =============================================
 
-function playContent(content) {
-    console.log('🎬 PLAY CONTENT CHAMADO:', content);
-    currentPlayingContent = content;
-    
-    // Atualizar informações do modal
-    document.getElementById('video-title').textContent = content.title;
-    document.getElementById('video-description').textContent = content.description;
-    document.getElementById('video-url-display').textContent = content.videoUrl;
-    
-    // Mostrar modal primeiro
-    const videoModal = document.getElementById('video-modal');
-    videoModal.classList.remove('hidden');
-    
-    // Aguardar um pouco para o modal renderizar
-    setTimeout(() => {
-        loadVideoContent(content);
-    }, 100);
-}
-
-function loadVideoContent(content) {
-    const videoContainer = document.getElementById('video-container');
-    const placeholder = document.getElementById('video-placeholder');
-    
-    console.log('📦 Carregando conteúdo:', content.sourceType);
-    console.log('🔗 URL:', content.videoUrl);
-    
-    // Limpar elementos anteriores
-    cleanupVideoElements();
-    
-    // Mostrar que está processando
-    placeholder.innerHTML = `
-        <div class="loading-spinner"></div>
-        <h3>Processando ${content.sourceType}...</h3>
-        <p style="color: #ccc;">URL: ${content.videoUrl}</p>
-    `;
-
-    // Processar baseado no tipo
-    switch(content.sourceType) {
-        case 'youtube':
-            loadYouTube(content.videoUrl, videoContainer, placeholder);
-            break;
-        case 'google_drive':
-            loadGoogleDrive(content.videoUrl, videoContainer, placeholder);
-            break;
-        case 'direct':
-            loadDirectVideo(content.videoUrl, videoContainer, placeholder);
-            break;
-        case 'archive':
-            loadArchive(content.videoUrl, videoContainer, placeholder);
-            break;
-        case 'mega':
-            loadMega(content.videoUrl, videoContainer, placeholder);
-            break;
-        default:
-            loadUniversal(content.videoUrl, videoContainer, placeholder, content.sourceType);
-    }
-}
-
-// Função para limpar elementos de vídeo anteriores
-function cleanupVideoElements() {
-    console.log('🧹 Limpando elementos de vídeo anteriores...');
-    
-    // Parar e limpar vídeo element
-    if (currentVideoElement) {
-        currentVideoElement.pause();
-        currentVideoElement.src = '';
-        currentVideoElement.load();
-        currentVideoElement = null;
-    }
-    
-    // Limpar iframe
-    if (currentIframeElement) {
-        currentIframeElement.src = 'about:blank';
-        currentIframeElement = null;
-    }
-    
-    // Limpar container
-    const videoContainer = document.getElementById('video-container');
-    if (videoContainer) {
-        videoContainer.innerHTML = '';
-    }
-}
-
-// Função para fechar o player corretamente
-function closeVideoPlayer() {
-    console.log('🔒 Fechando player de vídeo...');
-    
-    // Limpar elementos de vídeo
-    cleanupVideoElements();
-    
-    // Esconder modal
-    const videoModal = document.getElementById('video-modal');
-    videoModal.classList.add('hidden');
-    
-    // Resetar conteúdo atual
-    currentPlayingContent = null;
-    
-    console.log('✅ Player fechado e limpo');
-}
-
-// YouTube
-function loadYouTube(url, container, placeholder) {
-    console.log('🔧 Processando YouTube...');
-    
-    const videoId = getYouTubeId(url);
-    if (!videoId) {
-        showError('ID do YouTube não encontrado na URL', container, placeholder, url, 'YouTube');
-        return;
-    }
-    
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
-    
-    placeholder.innerHTML = '<p style="color: green;">Criando player YouTube...</p>';
-    
-    setTimeout(() => {
-        container.innerHTML = `
-            <iframe 
-                id="youtube-iframe"
-                src="${embedUrl}"
-                width="100%" 
-                height="100%" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen
-                style="border: none;">
-            </iframe>
-        `;
-        
-        // Registrar iframe atual
-        currentIframeElement = document.getElementById('youtube-iframe');
-        console.log('✅ Player YouTube criado');
-    }, 500);
-}
-
-// Google Drive
-function loadGoogleDrive(url, container, placeholder) {
-    console.log('🔧 Processando Google Drive...');
-    
-    const fileId = getGoogleDriveId(url);
-    if (!fileId) {
-        showError('ID do Google Drive não encontrado', container, placeholder, url, 'Google Drive');
-        return;
-    }
-    
-    const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-    
-    placeholder.innerHTML = '<p style="color: green;">Tentando Google Drive Preview...</p>';
-    
-    // Primeiro tenta o preview
-    container.innerHTML = `
-        <iframe 
-            id="gdrive-iframe"
-            src="${previewUrl}"
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen
-            style="border: none;"
-            onload="console.log('✅ Google Drive Preview carregado')"
-            onerror="tryGoogleDriveAlternative('${fileId}')">
-        </iframe>
-    `;
-    
-    currentIframeElement = document.getElementById('gdrive-iframe');
-}
-
-function tryGoogleDriveAlternative(fileId) {
-    console.log('🔄 Tentando método alternativo do Google Drive...');
-    const container = document.getElementById('video-container');
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    
-    container.innerHTML = `
-        <video 
-            id="gdrive-video"
-            controls 
-            autoplay
-            style="width: 100%; height: 100%;"
-            onerror="showGoogleDriveError()">
-            <source src="${downloadUrl}" type="video/mp4">
-            Seu navegador não suporta o elemento de vídeo.
-        </video>
-    `;
-    
-    currentVideoElement = document.getElementById('gdrive-video');
-}
-
-function showGoogleDriveError() {
-    const container = document.getElementById('video-container');
-    const url = currentPlayingContent.videoUrl;
-    showError('Google Drive não pôde ser carregado', container, null, url, 'Google Drive');
-}
-
-// Vídeo Direto
-function loadDirectVideo(url, container, placeholder) {
-    console.log('🔧 Processando vídeo direto...');
-    
-    placeholder.innerHTML = '<p style="color: green;">Carregando vídeo direto...</p>';
-    
-    container.innerHTML = `
-        <video 
-            id="direct-video-player"
-            controls 
-            autoplay
-            style="width: 100%; height: 100%; background: #000;"
-            onloadstart="console.log('🎥 Vídeo direto iniciando carregamento')"
-            oncanplay="console.log('✅ Vídeo direto pronto para reproduzir')"
-            onerror="handleDirectVideoError()">
-            <source src="${url}" type="video/mp4">
-            <source src="${url}" type="video/webm">
-            <source src="${url}" type="video/ogg">
-            Seu navegador não suporta o elemento de vídeo.
-        </video>
-    `;
-    
-    currentVideoElement = document.getElementById('direct-video-player');
-    
-    // Forçar carregamento
-    setTimeout(() => {
-        if (currentVideoElement) {
-            currentVideoElement.load();
-            currentVideoElement.play().catch(e => {
-                console.log('⚠️ Autoplay bloqueado, mas vídeo carregado');
-            });
-        }
-    }, 1000);
-}
-
-function handleDirectVideoError() {
-    console.log('❌ Erro no vídeo direto');
-    const container = document.getElementById('video-container');
-    const url = currentPlayingContent.videoUrl;
-    showError('Vídeo direto não pôde ser carregado', container, null, url, 'Vídeo Direto');
-}
-
-// Internet Archive
-function loadArchive(url, container, placeholder) {
-    console.log('🔧 Processando Internet Archive...');
-    
-    placeholder.innerHTML = '<p style="color: green;">Carregando Internet Archive...</p>';
-    
-    container.innerHTML = `
-        <iframe 
-            id="archive-iframe"
-            src="${url}"
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen
-            style="border: none;"
-            onload="console.log('✅ Internet Archive carregado')"
-            onerror="showArchiveError()">
-        </iframe>
-    `;
-    
-    currentIframeElement = document.getElementById('archive-iframe');
-}
-
-function showArchiveError() {
-    const container = document.getElementById('video-container');
-    const url = currentPlayingContent.videoUrl;
-    showError('Internet Archive não pôde ser carregado', container, null, url, 'Internet Archive');
-}
-
-// =============================================
-// SISTEMA MEGA.NZ MELHORADO
-// =============================================
-
-function loadMega(url, container, placeholder) {
-    console.log('🔧 Processando Mega.nz...');
-    
-    placeholder.innerHTML = '<p style="color: green;">Processando Mega.nz...</p>';
-    
-    // Extrair informações do link do Mega
-    const megaInfo = extractMegaInfo(url);
-    
-    if (!megaInfo) {
-        showMegaError('Link do Mega.nz inválido', url, container);
-        return;
-    }
-    
-    // Tentar métodos alternativos primeiro
-    tryMegaAlternatives(megaInfo, url, container);
-}
-
-function tryMegaAlternatives(megaInfo, originalUrl, container) {
-    console.log('🔄 Tentando métodos alternativos para Mega.nz...');
-    
-    // Método 1: Tentar via serviço de proxy/conversor
-    const proxyUrl = `https://megasf.net/mega.html#${megaInfo.fileId}${megaInfo.key ? `!${megaInfo.key}` : ''}`;
-    
-    // Método 2: Tentar via embed limitado
-    const embedUrl = `https://mega.nz/embed/${megaInfo.fileId}${megaInfo.key ? `#${megaInfo.key}` : ''}`;
-    
-    container.innerHTML = `
-        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 30px; background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);">
-            <i class="fas fa-cloud-download-alt" style="font-size: 4rem; color: #00aaff; margin-bottom: 20px;"></i>
-            <h2 style="color: #00aaff; margin-bottom: 15px;">Arquivo Mega.nz</h2>
-            
-            <div style="background: rgba(0,170,255,0.1); padding: 20px; border-radius: 10px; margin-bottom: 25px; max-width: 500px;">
-                <p style="margin-bottom: 10px;"><strong>Arquivo:</strong> ${megaInfo.filename || 'Não identificado'}</p>
-                <p style="margin-bottom: 10px;"><strong>Tipo:</strong> ${megaInfo.fileType || 'Vídeo'}</p>
-                <p style="word-break: break-all; font-size: 0.9rem; color: #ccc;">
-                    <strong>ID:</strong> ${megaInfo.fileId}
-                </p>
-            </div>
-            
-            <p style="color: #ccc; margin-bottom: 25px; max-width: 600px;">
-                Escolha o método preferido para acessar este conteúdo:
-            </p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; width: 100%; max-width: 800px; margin-bottom: 25px;">
-                <button onclick="openMegaLink('${originalUrl}')" 
-                        style="padding: 15px; background: #00aaff; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <i class="fas fa-external-link-alt" style="font-size: 1.5rem;"></i>
-                    <div>
-                        <strong>Abrir no Mega.nz</strong>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">Player oficial</div>
-                    </div>
-                </button>
-                
-                <button onclick="tryMegaEmbed('${embedUrl}')" 
-                        style="padding: 15px; background: #4CAF50; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <i class="fas fa-play-circle" style="font-size: 1.5rem;"></i>
-                    <div>
-                        <strong>Tentar Player</strong>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">Embed experimental</div>
-                    </div>
-                </button>
-                
-                <button onclick="downloadMegaFile('${originalUrl}')" 
-                        style="padding: 15px; background: #FF9800; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <i class="fas fa-download" style="font-size: 1.5rem;"></i>
-                    <div>
-                        <strong>Download</strong>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">Assistir localmente</div>
-                    </div>
-                </button>
-                
-                <button onclick="tryMegaProxy('${proxyUrl}')" 
-                        style="padding: 15px; background: #9C27B0; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <i class="fas fa-link" style="font-size: 1.5rem;"></i>
-                    <div>
-                        <strong>Proxy Online</strong>
-                        <div style="font-size: 0.8rem; opacity: 0.9;">Serviço externo</div>
-                    </div>
-                </button>
-            </div>
-            
-            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; max-width: 600px;">
-                <h4 style="color: #00aaff; margin-bottom: 15px;">💡 Recomendações:</h4>
-                <ul style="text-align: left; color: #ccc; line-height: 1.6; font-size: 0.9rem;">
-                    <li><strong>Para melhor experiência:</strong> Use o app oficial do Mega.nz</li>
-                    <li><strong>Para arquivos grandes:</strong> Faça download e assista localmente</li>
-                    <li><strong>Problemas com embedding:</strong> Tente o serviço de proxy</li>
-                    <li>Alguns navegadores podem bloquear a reprodução automática</li>
-                </ul>
-            </div>
-        </div>
-    `;
-}
-
-// Novas funções para métodos alternativos
-function tryMegaEmbed(embedUrl) {
-    console.log('🎬 Tentando embed do Mega:', embedUrl);
-    const container = document.getElementById('video-container');
-    
-    container.innerHTML = `
-        <iframe 
-            id="mega-embed"
-            src="${embedUrl}"
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen
-            style="border: none;"
-            onload="console.log('✅ Embed Mega carregado')"
-            onerror="showMegaEmbedError()">
-        </iframe>
-    `;
-    
-    currentIframeElement = document.getElementById('mega-embed');
-    showMessage('Carregando player experimental do Mega...', 'info');
-}
-
-function tryMegaProxy(proxyUrl) {
-    console.log('🔗 Abrindo proxy Mega:', proxyUrl);
-    window.open(proxyUrl, '_blank');
-    showMessage('Abrindo através de serviço proxy...', 'info');
-}
-
-function showMegaEmbedError() {
-    const container = document.getElementById('video-container');
-    const url = currentPlayingContent.videoUrl;
-    showMessage('Embed do Mega não funcionou. Tente outra opção.', 'warning');
-    // Recarregar as opções
-    loadMega(url, container, null);
-}
-
-// Funções de ação para Mega.nz
-function openMegaLink(url) {
-    console.log('🔗 Abrindo Mega.nz:', url);
-    window.open(url, '_blank');
-    showMessage('Abrindo Mega.nz em nova aba...', 'info');
-}
-
-function downloadMegaFile(url) {
-    console.log('📥 Iniciando download do Mega:', url);
-    
-    // O Mega.nz geralmente inicia download automaticamente quando aberto
-    const downloadUrl = url.includes('?download=1') ? url : url + '?download=1';
-    
-    window.open(downloadUrl, '_blank');
-    showMessage('Iniciando download do Mega.nz...', 'info');
-}
-
-function copyMegaUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        showMessage('✅ URL do Mega.nz copiada!', 'success');
-    }).catch(() => {
-        // Fallback
-        const textArea = document.createElement('textarea');
-        textArea.value = url;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        showMessage('✅ URL do Mega.nz copiada!', 'success');
-    });
-}
-
-function showMegaError(message, url, container) {
-    console.log('❌ Erro Mega.nz:', message);
-    
-    container.innerHTML = `
-        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 30px;">
-            <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #ff6b6b; margin-bottom: 20px;"></i>
-            <h2 style="color: #ff6b6b; margin-bottom: 15px;">Erro no Mega.nz</h2>
-            <p style="font-size: 1.2rem; margin-bottom: 10px;">${message}</p>
-            <p style="color: #999; font-size: 0.9rem; word-break: break-all; max-width: 600px; margin-bottom: 30px;">
-                <strong>URL:</strong> ${url}
-            </p>
-            
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
-                <button onclick="openMegaLink('${url}')" 
-                        style="padding: 15px 25px; background: #00aaff; border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 1rem;">
-                    <i class="fas fa-external-link-alt"></i> Tentar Abrir
-                </button>
-                
-                <button onclick="testMegaUrl('${url}')" 
-                        style="padding: 15px 25px; background: #2196F3; border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 1rem;">
-                    <i class="fas fa-video"></i> Testar URL
-                </button>
-            </div>
-            
-            <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 8px; max-width: 600px;">
-                <h4 style="color: #00aaff; margin-bottom: 15px;">Sobre o Mega.nz:</h4>
-                <ul style="text-align: left; color: #ccc; line-height: 1.6;">
-                    <li>O Mega.nz possui forte proteção contra embedding</li>
-                    <li>Links geralmente requerem interação manual do usuário</li>
-                    <li>Para melhor experiência, use o app oficial do Mega</li>
-                    <li>Arquivos grandes funcionam melhor com download</li>
-                </ul>
-            </div>
-        </div>
-    `;
-}
-
-function testMegaUrl(url) {
-    console.log('🧪 Testando URL do Mega:', url);
-    window.open(url, '_blank');
-    showMessage('Testando URL do Mega.nz...', 'info');
-}
-
-// Extrair informações do link Mega.nz
-function extractMegaInfo(url) {
-    try {
-        console.log('🔍 Analisando URL do Mega:', url);
-        
-        // Padrões comuns do Mega.nz
-        const patterns = [
-            /mega\.nz\/(file|folder)\/([^#]+)#([^#\s]+)/, // Com chave
-            /mega\.nz\/(file|folder)\/([^#\s?]+)/,        // Sem chave
-            /mega\.nz\/(file|folder)\/([^#\s?]+)\?/       // Com parâmetros
-        ];
-        
-        for (let pattern of patterns) {
-            const match = url.match(pattern);
-            if (match) {
-                const type = match[1]; // file ou folder
-                const fileId = match[2];
-                const key = match[3] || null;
-                
-                console.log('✅ Mega.nz detectado:', { type, fileId, key });
-                
-                // Determinar tipo de arquivo baseado na URL
-                let fileType = 'Vídeo';
-                if (url.match(/\.(mp4|avi|mkv|mov|wmv)$/i)) fileType = 'Vídeo';
-                else if (url.match(/\.(jpg|jpeg|png|gif)$/i)) fileType = 'Imagem';
-                else if (url.match(/\.(mp3|wav|flac)$/i)) fileType = 'Áudio';
-                
-                return {
-                    type: type,
-                    fileId: fileId,
-                    key: key,
-                    filename: extractFilenameFromUrl(url),
-                    fileType: fileType,
-                    directUrl: `https://mega.nz/${type}/${fileId}${key ? `#${key}` : ''}`
-                };
-            }
-        }
-        
-        return null;
-    } catch (error) {
-        console.error('Erro ao extrair info do Mega:', error);
-        return null;
-    }
-}
-
-// Tentar extrair nome do arquivo da URL
-function extractFilenameFromUrl(url) {
-    try {
-        // Tenta encontrar o nome após o último /
-        const parts = url.split('/');
-        const lastPart = parts[parts.length - 1];
-        
-        // Remove parâmetros e fragments
-        const cleanName = lastPart.split('?')[0].split('#')[0];
-        
-        // Se for muito longo, trunca
-        return cleanName.length > 30 ? cleanName.substring(0, 30) + '...' : cleanName;
-    } catch (error) {
-        return 'Arquivo do Mega.nz';
-    }
-}
-
-// Carregamento universal
-function loadUniversal(url, container, placeholder, sourceType) {
-    console.log('🔧 Processando fonte universal:', sourceType);
-    
-    // Tenta como iframe primeiro
-    container.innerHTML = `
-        <iframe 
-            id="universal-iframe"
-            src="${url}"
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            allowfullscreen
-            style="border: none;"
-            onload="console.log('✅ Iframe universal carregado')"
-            onerror="tryUniversalVideo('${url}')">
-        </iframe>
-    `;
-    
-    currentIframeElement = document.getElementById('universal-iframe');
-}
-
-function tryUniversalVideo(url) {
-    console.log('🔄 Tentando como vídeo universal...');
-    const container = document.getElementById('video-container');
-    
-    container.innerHTML = `
-        <video 
-            id="universal-video"
-            controls 
-            autoplay
-            style="width: 100%; height: 100%;"
-            onerror="showUniversalError('${url}')">
-            <source src="${url}" type="video/mp4">
-            Seu navegador não suporta o elemento de vídeo.
-        </video>
-    `;
-    
-    currentVideoElement = document.getElementById('universal-video');
-}
-
-function showUniversalError(url) {
-    const container = document.getElementById('video-container');
-    showError('Não foi possível carregar o conteúdo', container, null, url, 'Universal');
-}
-
-// Funções auxiliares para extração de IDs
 function getYouTubeId(url) {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
@@ -762,8 +595,59 @@ function getGoogleDriveId(url) {
     return match ? match[1] : null;
 }
 
-function showError(message, container, placeholder, url, sourceType) {
+function extractMegaInfo(url) {
+    try {
+        console.log('🔍 Analisando URL do Mega:', url);
+        
+        const patterns = [
+            /mega\.nz\/(file|folder)\/([^#]+)#([^#\s]+)/,
+            /mega\.nz\/(file|folder)\/([^#\s?]+)/,
+            /mega\.nz\/(file|folder)\/([^#\s?]+)\?/
+        ];
+        
+        for (let pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) {
+                const type = match[1];
+                const fileId = match[2];
+                const key = match[3] || null;
+                
+                console.log('✅ Mega.nz detectado:', { type, fileId, key });
+                
+                return {
+                    type: type,
+                    fileId: fileId,
+                    key: key,
+                    filename: extractFilenameFromUrl(url),
+                    fileType: 'Vídeo',
+                    directUrl: `https://mega.nz/${type}/${fileId}${key ? `#${key}` : ''}`
+                };
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do Mega:', error);
+        return null;
+    }
+}
+
+function extractFilenameFromUrl(url) {
+    try {
+        const parts = url.split('/');
+        const lastPart = parts[parts.length - 1];
+        const cleanName = lastPart.split('?')[0].split('#')[0];
+        return cleanName.length > 30 ? cleanName.substring(0, 30) + '...' : cleanName;
+    } catch (error) {
+        return 'Arquivo do Mega.nz';
+    }
+}
+
+function showError(message, url, sourceType) {
     console.log('❌ ERRO:', message);
+    
+    const videoContainer = document.getElementById('video-container');
+    const placeholder = document.getElementById('video-placeholder');
     
     const errorHTML = `
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 30px;">
@@ -785,56 +669,15 @@ function showError(message, container, placeholder, url, sourceType) {
                         style="padding: 15px 25px; background: #2196F3; border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-video"></i> Testar em Nova Aba
                 </button>
-                
-                <button onclick="copyUrl('${url}')" 
-                        style="padding: 15px 25px; background: #FF9800; border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-copy"></i> Copiar URL
-                </button>
-            </div>
-            
-            <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 8px; max-width: 600px;">
-                <h4 style="color: #4CAF50; margin-bottom: 15px;">Possíveis Soluções:</h4>
-                <ul style="text-align: left; color: #ccc; line-height: 1.6;">
-                    <li>Verifique se o link está público e acessível</li>
-                    <li>Teste o link diretamente no navegador</li>
-                    <li>Google Drive: o arquivo precisa estar compartilhado como "Qualquer pessoa com o link pode ver"</li>
-                    <li>YouTube: o vídeo pode ter restrições de incorporação</li>
-                    <li>URLs diretas: o servidor precisa permitir acesso cross-origin (CORS)</li>
-                </ul>
             </div>
         </div>
     `;
     
     if (placeholder) {
         placeholder.innerHTML = errorHTML;
-    } else {
-        container.innerHTML = errorHTML;
+    } else if (videoContainer) {
+        videoContainer.innerHTML = errorHTML;
     }
-}
-
-// Funções de ação
-function openLinkDirectly(url) {
-    window.open(url, '_blank');
-    showMessage('Abrindo link original...', 'info');
-}
-
-function testInNewTab(url) {
-    window.open(url, '_blank');
-    showMessage('Testando em nova aba...', 'info');
-}
-
-function copyUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        showMessage('URL copiada com sucesso!', 'success');
-    }).catch(() => {
-        const textArea = document.createElement('textarea');
-        textArea.value = url;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        showMessage('URL copiada!', 'success');
-    });
 }
 
 // =============================================
@@ -888,6 +731,9 @@ function initApp() {
     
     // Configurar instruções de fonte
     setupSourceInstructions();
+    
+    // Inicializar controles do player
+    setTimeout(initPlayerControls, 1000);
 }
 
 // Configurar instruções de fonte
@@ -1032,9 +878,12 @@ function checkUserRole(uid) {
                 const userData = doc.data();
                 isAdmin = userData.role === 'admin';
                 
+                // Adicionar/remover classe no body para controlar visibilidade dos badges
                 if (isAdmin) {
+                    document.body.classList.add('admin-logged-in');
                     adminPanelLink.classList.remove('hidden');
                 } else {
+                    document.body.classList.remove('admin-logged-in');
                     adminPanelLink.classList.add('hidden');
                     adminPanel.classList.add('hidden');
                 }
@@ -1159,7 +1008,7 @@ function loadContent() {
         });
 }
 
-// Criar item de conteúdo
+// Criar item de conteúdo (SEM BADGES PARA USUÁRIOS COMUNS)
 function createContentItem(content) {
     const contentItem = document.createElement('div');
     contentItem.className = 'content-item';
@@ -1167,16 +1016,21 @@ function createContentItem(content) {
     // Processar thumbnail baseado na fonte do conteúdo
     const processedThumbnail = processThumbnailUrl(content.thumbnail, content.sourceType);
     
+    // SOMENTE ADMIN vê o badge de fonte
+    const sourceBadge = isAdmin ? `
+        <div class="content-source-badge">
+            <i class="fas fa-${getSourceIcon(content.sourceType)}"></i>
+            ${SUPPORTED_SERVICES[content.sourceType] || content.sourceType}
+        </div>
+    ` : '';
+    
     contentItem.innerHTML = `
         <img src="${processedThumbnail}" alt="${content.title}" 
              onerror="this.src='https://via.placeholder.com/300x450/333333/FFFFFF?text=Imagem+Não+Disponível'">
         <div class="content-info">
             <h4>${content.title}</h4>
             <p>${content.description.substring(0, 80)}...</p>
-            <div class="content-source-badge">
-                <i class="fas fa-${getSourceIcon(content.sourceType)}"></i>
-                ${SUPPORTED_SERVICES[content.sourceType] || content.sourceType}
-            </div>
+            ${sourceBadge}
         </div>
     `;
     
@@ -1189,7 +1043,7 @@ function showContentOptions(content) {
     if (isAdmin) {
         showAdminContentOptions(content);
     } else {
-        showContentInfo(content);
+        playContent(content);
     }
 }
 
@@ -1534,7 +1388,10 @@ function filterContentByCategory(category) {
     });
 }
 
-// Funções de administração
+// =============================================
+// FUNÇÕES DE ADMINISTRAÇÃO
+// =============================================
+
 function deleteUser(userId) {
     if (!isAdmin) return;
     
@@ -1624,6 +1481,10 @@ function editContent(contentId) {
     }
 }
 
+// =============================================
+// FUNÇÕES DE UTILIDADE
+// =============================================
+
 // Mostrar mensagens
 function showMessage(message, type) {
     // Remove mensagens anteriores
@@ -1639,7 +1500,9 @@ function showMessage(message, type) {
     
     // Adiciona a mensagem no topo da tela atual
     const currentScreen = document.querySelector('.screen.active');
-    currentScreen.insertBefore(messageDiv, currentScreen.firstChild);
+    if (currentScreen) {
+        currentScreen.insertBefore(messageDiv, currentScreen.firstChild);
+    }
     
     // Remove a mensagem após 5 segundos
     setTimeout(() => {
@@ -1668,125 +1531,94 @@ function hideLoading() {
     loading.classList.add('hidden');
 }
 
-// Adicionar estilos dinâmicos
-const style = document.createElement('style');
-style.textContent = `
-    .text-secondary { color: var(--text-secondary); }
-    .source-type { 
-        padding: 4px 8px; 
-        background: rgba(255,255,255,0.1); 
-        border-radius: 4px; 
-        font-size: 11px; 
-    }
-    .source-instructions {
-        background: rgba(0, 0, 128, 0.1);
-        padding: 15px;
-        border-radius: var(--border-radius-sm);
-        border-left: 4px solid var(--primary-color);
-        margin: 15px 0;
-        font-size: 14px;
-    }
-    .source-instructions h4 {
-        color: var(--text-color);
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .source-instructions p {
-        margin-bottom: 8px;
-        color: var(--text-secondary);
-    }
-    .source-instructions ul {
-        padding-left: 20px;
-        color: var(--text-secondary);
-    }
-    .source-instructions li {
-        margin-bottom: 5px;
-    }
-    .loading-spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #007bff;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+// Função para fechar o player corretamente
+function closeVideoPlayer() {
+    console.log('🔒 Fechando player de vídeo...');
+    
+    // Parar vídeo
+    if (unifiedVideoPlayer) {
+        unifiedVideoPlayer.pause();
+        unifiedVideoPlayer.src = '';
     }
     
-    /* Estilos para badges de fonte */
-    .content-source-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(0, 0, 0, 0.8);
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 10px;
-        color: white;
-        display: flex;
-        align-items: center;
-        gap: 4px;
+    // Esconder modal
+    videoModal.classList.add('hidden');
+    
+    // Resetar container
+    const videoContainer = document.getElementById('video-container');
+    if (videoContainer) {
+        videoContainer.innerHTML = `
+            <div id="netflix-player" style="width: 100%; height: 100%; display: none;">
+                <video id="unified-video-player" style="width: 100%; height: 100%;" controls>
+                    Seu navegador não suporta o elemento de vídeo.
+                </video>
+                <div id="player-controls" style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 20px; display: none;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <button id="play-pause-btn" style="background: white; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <i class="fas fa-play" style="color: black;"></i>
+                        </button>
+                        <button id="mute-btn" style="background: transparent; border: 1px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white;">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <div style="flex: 1; background: rgba(255,255,255,0.2); height: 4px; border-radius: 2px; position: relative; cursor: pointer;">
+                            <div id="progress-bar" style="position: absolute; left: 0; top: 0; height: 100%; background: red; width: 0%; border-radius: 2px;"></div>
+                        </div>
+                        <span id="time-display" style="color: white; font-size: 14px;">0:00 / 0:00</span>
+                        <button id="fullscreen-btn" style="background: transparent; border: 1px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; margin-left: auto;">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="video-placeholder" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 20px; background: #000;">
+                <div class="loading-spinner"></div>
+                <h3>Preparando o player...</h3>
+            </div>
+        `;
     }
     
-    .content-item {
-        position: relative;
-    }
-    
-    /* Grid de opções do Mega.nz */
-    .mega-options-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
-        width: 100%;
-        max-width: 800px;
-    }
-    
-    .mega-option-btn {
-        padding: 15px;
-        border: none;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        transition: all 0.3s ease;
-    }
-    
-    .mega-option-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    
-    /* Placeholders específicos para serviços */
-    .thumbnail-placeholder {
-        background: linear-gradient(135deg, #1a1a2a 0%, #16213e 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-    }
-`;
-document.head.appendChild(style);
+    // Resetar controles
+    playerInitialized = false;
+    currentPlayingContent = null;
+    console.log('✅ Player fechado e limpo');
+}
 
-// Tornar funções globais para uso no HTML
-window.openMegaLink = openMegaLink;
-window.downloadMegaFile = downloadMegaFile;
-window.copyMegaUrl = copyMegaUrl;
-window.tryMegaEmbed = tryMegaEmbed;
-window.tryMegaProxy = tryMegaProxy;
-window.testMegaUrl = testMegaUrl;
-window.openLinkDirectly = openLinkDirectly;
-window.testInNewTab = testInNewTab;
-window.copyUrl = copyUrl;
+// =============================================
+// FUNÇÕES GLOBAIS
+// =============================================
+
+// Funções de ação para uso no HTML
+window.openLinkDirectly = function(url) {
+    window.open(url, '_blank');
+    showMessage('Abrindo link original...', 'info');
+};
+
+window.testInNewTab = function(url) {
+    window.open(url, '_blank');
+    showMessage('Testando em nova aba...', 'info');
+};
+
+window.copyUrl = function(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        showMessage('URL copiada com sucesso!', 'success');
+    }).catch(() => {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showMessage('URL copiada!', 'success');
+    });
+};
+
+// Funções de administração globais
 window.editUserRole = editUserRole;
 window.deleteUser = deleteUser;
 window.editContent = editContent;
 window.deleteContent = deleteContent;
+
+// Inicializar controles do player após carregamento completo
+window.addEventListener('load', () => {
+    setTimeout(initPlayerControls, 1500);
+});

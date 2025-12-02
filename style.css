@@ -1,8 +1,10 @@
-/* style.css - VERSÃO COMPLETA COM MEGA.NZ MELHORADO E THUMBNAILS */
+/* style.css - VERSÃO COMPLETA COM PLAYER UNIFICADO NETFLIX-STYLE */
 :root {
     --primary-color: #000080;
     --secondary-color: #008000;
     --accent-color: #FF0000;
+    --netflix-red: #e50914;
+    --netflix-dark: #141414;
     --text-color: #ffffff;
     --text-secondary: #b3b3b3;
     --bg-dark: #0f0f0f;
@@ -14,8 +16,10 @@
     --gradient-primary: linear-gradient(135deg, #000080 0%, #0000aa 100%);
     --gradient-secondary: linear-gradient(135deg, #008000 0%, #00aa00 100%);
     --gradient-accent: linear-gradient(135deg, #FF0000 0%, #ff3333 100%);
+    --gradient-netflix: linear-gradient(135deg, #e50914 0%, #b20710 100%);
     --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     --shadow-light: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-player: 0 0 30px rgba(229, 9, 20, 0.3);
     --border-radius: 12px;
     --border-radius-sm: 8px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -46,30 +50,10 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-.loading-spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #007bff;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
-}
-
-/* Estilos para o modal de vídeo */
-#video-modal .modal-content {
-    background: #000;
-    border: 2px solid #333;
-}
-
-#video-modal .close-modal {
-    background: rgba(0,0,0,0.8);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
 /* Loading Spinner */
@@ -79,7 +63,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.95);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -95,7 +79,7 @@ body {
 .spinner {
     border: 4px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    border-top: 4px solid var(--primary-color);
+    border-top: 4px solid var(--netflix-red);
     width: 60px;
     height: 60px;
     animation: spin 1s linear infinite;
@@ -106,6 +90,16 @@ body {
     font-size: 1.2rem;
     color: var(--text-color);
     text-align: center;
+}
+
+.loading-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--netflix-red);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
 }
 
 /* Screens */
@@ -126,7 +120,7 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 128, 0.3) 100%);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(229, 9, 20, 0.3) 100%);
     background-size: cover;
     background-position: center;
     padding: 20px;
@@ -141,9 +135,10 @@ body {
 
 .logo i {
     font-size: 4rem;
-    color: var(--primary-color);
+    color: var(--netflix-red);
     margin-bottom: 10px;
     display: block;
+    animation: pulse 2s infinite;
 }
 
 .logo h1 {
@@ -151,6 +146,7 @@ body {
     color: var(--text-color);
     font-weight: 900;
     margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .tagline {
@@ -159,7 +155,7 @@ body {
 }
 
 form {
-    background: rgba(15, 15, 15, 0.95);
+    background: rgba(20, 20, 20, 0.95);
     padding: 40px 30px;
     border-radius: var(--border-radius);
     width: 100%;
@@ -198,6 +194,7 @@ form h2 {
 .input-group textarea {
     height: 100px;
     resize: vertical;
+    min-height: 80px;
 }
 
 .input-group select {
@@ -206,13 +203,18 @@ form h2 {
     background-repeat: no-repeat;
     background-position: right 15px center;
     background-size: 16px;
+    cursor: pointer;
 }
 
 .input-group input:focus, .input-group textarea:focus, .input-group select:focus {
-    border-color: var(--primary-color);
+    border-color: var(--netflix-red);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(0, 0, 128, 0.3);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.3);
     background: rgba(255, 255, 255, 0.08);
+}
+
+.input-group input::placeholder, .input-group textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
 }
 
 /* Buttons */
@@ -232,24 +234,25 @@ form h2 {
 }
 
 .btn-primary {
-    background: var(--gradient-primary);
+    background: var(--gradient-netflix);
     color: var(--text-color);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 128, 0.4);
+    box-shadow: 0 8px 25px rgba(229, 9, 20, 0.4);
 }
 
 .btn-secondary {
     background: transparent;
     color: var(--text-color);
-    border: 2px solid var(--secondary-color);
+    border: 2px solid var(--text-secondary);
 }
 
 .btn-secondary:hover {
-    background: rgba(0, 128, 0, 0.1);
+    background: rgba(255, 255, 255, 0.1);
     transform: translateY(-2px);
+    border-color: var(--text-color);
 }
 
 .btn-danger {
@@ -259,6 +262,7 @@ form h2 {
 
 .btn-danger:hover {
     transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 0, 0, 0.4);
 }
 
 .btn-small {
@@ -273,14 +277,14 @@ form h2 {
 }
 
 .form-footer a {
-    color: var(--secondary-color);
+    color: var(--netflix-red);
     text-decoration: none;
     font-weight: 500;
     transition: var(--transition);
 }
 
 .form-footer a:hover {
-    color: #00ff00;
+    color: #ff3333;
     text-decoration: underline;
 }
 
@@ -290,7 +294,7 @@ form h2 {
     justify-content: space-between;
     align-items: center;
     padding: 20px 40px;
-    background: linear-gradient(to bottom, rgba(15, 15, 15, 0.95) 0%, transparent 100%);
+    background: linear-gradient(to bottom, rgba(20, 20, 20, 0.95) 0%, transparent 100%);
     position: fixed;
     top: 0;
     width: 100%;
@@ -300,8 +304,9 @@ form h2 {
 }
 
 .navbar.scrolled {
-    background: rgba(15, 15, 15, 0.98);
+    background: rgba(20, 20, 20, 0.98);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .nav-brand {
@@ -312,7 +317,7 @@ form h2 {
 
 .nav-brand i {
     font-size: 2rem;
-    color: var(--primary-color);
+    color: var(--netflix-red);
 }
 
 .nav-brand h1 {
@@ -340,7 +345,7 @@ form h2 {
 }
 
 .nav-link:hover, .nav-link.active {
-    background: var(--gradient-primary);
+    background: var(--gradient-netflix);
     color: var(--text-color);
 }
 
@@ -362,10 +367,21 @@ form h2 {
     align-items: flex-end;
     padding: 0 40px 80px;
     position: relative;
-    background: linear-gradient(to top, var(--bg-darker) 0%, transparent 60%), 
-                var(--gradient-primary);
+    background: linear-gradient(to top, var(--bg-darker) 0%, transparent 60%);
     background-size: cover;
     background-position: center;
+    overflow: hidden;
+}
+
+.featured-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(77deg, rgba(0,0,0,.6) 0, rgba(0,0,0,0) 85%);
+    z-index: 1;
 }
 
 .featured-content {
@@ -381,6 +397,7 @@ form h2 {
     color: var(--text-color);
     font-weight: 900;
     line-height: 1.1;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
 }
 
 .featured-content p {
@@ -388,6 +405,7 @@ form h2 {
     margin-bottom: 30px;
     color: var(--text-secondary);
     line-height: 1.6;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .featured-actions {
@@ -413,13 +431,14 @@ form h2 {
 .content-section {
     padding: 60px 40px;
     animation: fadeIn 0.8s ease-out;
+    background: linear-gradient(to bottom, var(--bg-darker) 0%, var(--bg-dark) 100%);
 }
 
 .section-title {
     font-size: 2rem;
     margin-bottom: 30px;
     color: var(--text-color);
-    border-left: 5px solid var(--primary-color);
+    border-left: 5px solid var(--netflix-red);
     padding-left: 20px;
     font-weight: 700;
     display: flex;
@@ -441,11 +460,13 @@ form h2 {
     cursor: pointer;
     background: var(--bg-light);
     box-shadow: var(--shadow-light);
+    transform-origin: center;
 }
 
 .content-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 40px rgba(0, 0, 128, 0.3);
+    transform: scale(1.05) translateY(-5px);
+    box-shadow: var(--shadow-player);
+    z-index: 10;
 }
 
 .content-item img {
@@ -453,12 +474,18 @@ form h2 {
     height: 350px;
     object-fit: cover;
     transition: var(--transition);
+    display: block;
+}
+
+.content-item:hover img {
+    transform: scale(1.1);
 }
 
 .content-info {
     padding: 15px;
     background: var(--bg-light);
     position: relative;
+    z-index: 2;
 }
 
 .content-info h4 {
@@ -466,15 +493,22 @@ form h2 {
     margin-bottom: 8px;
     color: var(--text-color);
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .content-info p {
     font-size: 14px;
     color: var(--text-secondary);
     line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
-/* Estilos para badges de fonte */
+/* Estilos para badges de fonte - OCULTOS POR PADRÃO */
 .content-source-badge {
     position: absolute;
     top: 10px;
@@ -484,13 +518,19 @@ form h2 {
     border-radius: 12px;
     font-size: 10px;
     color: white;
-    display: flex;
+    display: none !important; /* Escondido por padrão */
     align-items: center;
     gap: 4px;
     backdrop-filter: blur(10px);
+    z-index: 10;
 }
 
-/* Modal */
+/* Mostrar badges apenas quando o body tem a classe admin-logged-in */
+body.admin-logged-in .content-source-badge {
+    display: flex !important;
+}
+
+/* Modal de Vídeo Netflix-Style */
 .modal {
     position: fixed;
     top: 0;
@@ -504,6 +544,7 @@ form h2 {
     align-items: center;
     padding: 20px;
     backdrop-filter: blur(10px);
+    animation: fadeIn 0.3s ease-out;
 }
 
 .modal.hidden {
@@ -512,13 +553,15 @@ form h2 {
 
 .modal-content {
     position: relative;
-    width: 90%;
-    max-width: 900px;
-    background: var(--bg-light);
+    width: 95%;
+    max-width: 1200px;
+    height: 85vh;
+    background: var(--netflix-dark);
     border-radius: var(--border-radius);
     overflow: hidden;
-    border: 2px solid var(--primary-color);
-    box-shadow: var(--shadow);
+    border: 2px solid rgba(229, 9, 20, 0.3);
+    box-shadow: var(--shadow-player);
+    animation: fadeIn 0.4s ease-out 0.1s both;
 }
 
 .close-modal, .close-info-modal {
@@ -526,9 +569,9 @@ form h2 {
     top: 15px;
     right: 20px;
     font-size: 2rem;
-    color: var(--accent-color);
+    color: var(--netflix-red);
     cursor: pointer;
-    z-index: 10;
+    z-index: 1001;
     transition: var(--transition);
     background: rgba(0, 0, 0, 0.7);
     width: 40px;
@@ -537,44 +580,186 @@ form h2 {
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .close-modal:hover, .close-info-modal:hover {
     color: #ff3333;
     transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.9);
 }
 
-/* Container de Vídeo Corrigido */
-.video-container {
+/* Container de Vídeo Netflix-Style */
+#video-container {
     position: relative;
     width: 100%;
-    height: 400px;
+    height: 100%;
     background: #000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    overflow: hidden;
 }
 
-.video-container iframe,
-.video-container video {
+/* Player Unificado Netflix-Style */
+#netflix-player {
     width: 100%;
     height: 100%;
+    position: relative;
+}
+
+#unified-video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    outline: none;
+    background: #000;
+}
+
+/* Controles Personalizados Netflix-Style */
+#player-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    padding: 25px 30px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 100;
+}
+
+#video-container:hover #player-controls {
+    opacity: 1;
+}
+
+.progress-container {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    position: relative;
+}
+
+#progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: var(--netflix-red);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.controls-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.player-btn {
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    color: white;
+    font-size: 16px;
+}
+
+.player-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+    border-color: var(--netflix-red);
+}
+
+#play-pause-btn {
+    background: white;
     border: none;
 }
 
-.video-info, .info-content {
-    padding: 25px;
+#play-pause-btn:hover {
+    background: #f0f0f0;
 }
 
-.video-info h3, .info-content h3 {
+#play-pause-btn i {
+    color: black;
+}
+
+#time-display {
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    color: white;
+    min-width: 100px;
+    text-align: center;
+    font-weight: 500;
+}
+
+#fullscreen-btn {
+    margin-left: auto;
+}
+
+/* Placeholder de Carregamento */
+#video-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    background: #000;
+    z-index: 50;
+}
+
+.video-info {
+    padding: 25px;
+    background: var(--netflix-dark);
+    border-top: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.video-info h3 {
     color: var(--text-color);
     margin-bottom: 15px;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
+    font-weight: 700;
 }
 
-.video-info p, .info-content p {
+.video-info p {
     color: var(--text-secondary);
     line-height: 1.6;
+    font-size: 1.1rem;
+}
+
+/* Modal de Informações */
+.info-content {
+    padding: 30px;
+    background: var(--netflix-dark);
+}
+
+.info-content h3 {
+    color: var(--text-color);
+    margin-bottom: 15px;
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.info-content p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-size: 1.1rem;
+    margin-bottom: 20px;
 }
 
 .info-details {
@@ -584,15 +769,22 @@ form h2 {
 }
 
 .info-details p {
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 10px;
+    color: var(--text-color);
+    font-size: 1rem;
 }
 
 .info-details strong {
-    color: var(--text-color);
+    color: var(--netflix-red);
     min-width: 120px;
+    font-weight: 600;
+}
+
+.info-details span {
+    color: var(--text-secondary);
 }
 
 /* Painel de Administração */
@@ -608,7 +800,7 @@ form h2 {
 .admin-panel h2 {
     color: var(--text-color);
     margin-bottom: 30px;
-    border-bottom: 3px solid var(--primary-color);
+    border-bottom: 3px solid var(--netflix-red);
     padding-bottom: 15px;
     font-size: 2rem;
     display: flex;
@@ -640,13 +832,14 @@ form h2 {
 }
 
 .admin-btn:hover {
-    background: rgba(0, 0, 128, 0.1);
-    border-color: var(--primary-color);
+    background: rgba(229, 9, 20, 0.1);
+    border-color: var(--netflix-red);
+    transform: translateY(-2px);
 }
 
 .admin-btn.active {
-    background: var(--gradient-primary);
-    border-color: var(--primary-color);
+    background: var(--gradient-netflix);
+    border-color: var(--netflix-red);
 }
 
 .admin-btn i {
@@ -659,6 +852,7 @@ form h2 {
 
 .admin-section.active {
     display: block;
+    animation: fadeIn 0.3s ease-out;
 }
 
 .admin-section h3 {
@@ -685,11 +879,11 @@ form h2 {
 }
 
 .url-help {
-    background: rgba(0, 0, 128, 0.1);
+    background: rgba(229, 9, 20, 0.1);
     padding: 20px;
     border-radius: var(--border-radius-sm);
     margin: 20px 0;
-    border-left: 4px solid var(--primary-color);
+    border-left: 4px solid var(--netflix-red);
 }
 
 .url-help h4 {
@@ -714,9 +908,42 @@ form h2 {
 
 .url-help li:before {
     content: "•";
-    color: var(--primary-color);
+    color: var(--netflix-red);
     position: absolute;
     left: 0;
+    font-size: 1.2rem;
+}
+
+/* Instruções de Fonte */
+.source-instructions {
+    background: rgba(229, 9, 20, 0.1);
+    padding: 15px;
+    border-radius: var(--border-radius-sm);
+    border-left: 4px solid var(--netflix-red);
+    margin: 15px 0;
+    font-size: 14px;
+}
+
+.source-instructions h4 {
+    color: var(--text-color);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.source-instructions p {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.source-instructions ul {
+    padding-left: 20px;
+    color: var(--text-secondary);
+}
+
+.source-instructions li {
+    margin-bottom: 5px;
 }
 
 /* Tables */
@@ -742,7 +969,7 @@ form h2 {
 .users-list th, .manage-content th {
     color: var(--text-color);
     font-weight: 600;
-    background: rgba(0, 0, 128, 0.2);
+    background: rgba(229, 9, 20, 0.2);
 }
 
 .action-buttons {
@@ -775,7 +1002,7 @@ form h2 {
 .empty-state i {
     font-size: 3rem;
     margin-bottom: 20px;
-    color: var(--primary-color);
+    color: var(--netflix-red);
     opacity: 0.7;
 }
 
@@ -787,23 +1014,25 @@ form h2 {
     text-align: center;
     font-weight: 600;
     animation: fadeIn 0.3s ease-out;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .success-message {
-    color: var(--secondary-color);
-    border: 2px solid var(--secondary-color);
-    background: rgba(0, 128, 0, 0.1);
+    color: #4CAF50;
+    border-color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
 }
 
 .error-message {
-    color: var(--accent-color);
-    border: 2px solid var(--accent-color);
-    background: rgba(255, 0, 0, 0.1);
+    color: var(--netflix-red);
+    border-color: var(--netflix-red);
+    background: rgba(229, 9, 20, 0.1);
 }
 
 .warning-message {
     color: var(--warning-color);
-    border: 2px solid var(--warning-color);
+    border-color: var(--warning-color);
     background: rgba(255, 165, 0, 0.1);
 }
 
@@ -814,10 +1043,11 @@ form h2 {
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
+    display: inline-block;
 }
 
 .user-role.admin {
-    background: var(--gradient-primary);
+    background: var(--gradient-netflix);
     color: white;
 }
 
@@ -839,38 +1069,6 @@ form h2 {
 .source-type {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-color);
-}
-
-/* Instruções de Fonte */
-.source-instructions {
-    background: rgba(0, 0, 128, 0.1);
-    padding: 15px;
-    border-radius: var(--border-radius-sm);
-    border-left: 4px solid var(--primary-color);
-    margin: 15px 0;
-    font-size: 14px;
-}
-
-.source-instructions h4 {
-    color: var(--text-color);
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.source-instructions p {
-    margin-bottom: 8px;
-    color: var(--text-secondary);
-}
-
-.source-instructions ul {
-    padding-left: 20px;
-    color: var(--text-secondary);
-}
-
-.source-instructions li {
-    margin-bottom: 5px;
 }
 
 /* Grid de opções do Mega.nz */
@@ -910,10 +1108,43 @@ form h2 {
     font-weight: bold;
 }
 
+/* Mensagens de Erro no Player */
+.error-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+    padding: 30px;
+    background: rgba(20, 20, 20, 0.9);
+}
+
+.error-container i {
+    font-size: 4rem;
+    color: var(--netflix-red);
+    margin-bottom: 20px;
+}
+
+.error-container h2 {
+    color: var(--netflix-red);
+    margin-bottom: 15px;
+    font-size: 1.8rem;
+}
+
+.error-container p {
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    max-width: 600px;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .navbar {
         padding: 15px 20px;
+        flex-wrap: wrap;
     }
     
     .nav-links {
@@ -933,8 +1164,17 @@ form h2 {
         font-size: 2rem;
     }
     
+    .featured-content p {
+        font-size: 1rem;
+    }
+    
     .featured-actions {
         flex-direction: column;
+    }
+    
+    .featured-actions button {
+        width: 100%;
+        min-width: unset;
     }
     
     .content-section {
@@ -944,6 +1184,10 @@ form h2 {
     .content-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 15px;
+    }
+    
+    .content-item img {
+        height: 250px;
     }
     
     .admin-panel {
@@ -961,6 +1205,7 @@ form h2 {
     
     .modal-content {
         width: 95%;
+        height: 70vh;
     }
     
     form {
@@ -971,13 +1216,27 @@ form h2 {
         font-size: 2.5rem;
     }
     
-    .video-container {
-        height: 300px;
+    .video-info h3 {
+        font-size: 1.5rem;
     }
     
-    .content-source-badge {
-        font-size: 8px;
-        padding: 3px 6px;
+    .video-info p {
+        font-size: 1rem;
+    }
+    
+    #player-controls {
+        padding: 15px 20px;
+    }
+    
+    .player-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+    }
+    
+    #time-display {
+        font-size: 12px;
+        min-width: 80px;
     }
 }
 
@@ -993,48 +1252,191 @@ form h2 {
     
     .section-title {
         font-size: 1.5rem;
-    }
-    
-    .video-container {
-        height: 250px;
+        padding-left: 15px;
     }
     
     .content-item img {
-        height: 250px;
+        height: 200px;
+    }
+    
+    .modal-content {
+        width: 100%;
+        height: 60vh;
+        border-radius: 0;
+        border: none;
+    }
+    
+    .close-modal, .close-info-modal {
+        top: 10px;
+        right: 10px;
+        width: 35px;
+        height: 35px;
+        font-size: 1.5rem;
+    }
+    
+    .logo h1 {
+        font-size: 2rem;
+    }
+    
+    .logo i {
+        font-size: 3rem;
+    }
+    
+    .featured-section {
+        height: 50vh;
+        padding: 0 15px 30px;
+    }
+    
+    .featured-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .featured-content p {
+        font-size: 0.9rem;
     }
 }
 
-/* Scrollbar */
+/* Scrollbar Personalizada */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
     background: var(--bg-dark);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
     border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: #0000aa;
+::-webkit-scrollbar-thumb {
+    background: var(--netflix-red);
+    border-radius: 4px;
+    transition: var(--transition);
 }
 
-/* Loading para vídeo */
-.video-loading {
-    color: white;
-    font-size: 1.2rem;
+::-webkit-scrollbar-thumb:hover {
+    background: #b20710;
+}
+
+/* Animações de entrada para elementos */
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Estilos para iframes dentro do player */
+#video-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Estilos para o modal de informações */
+.info-modal .modal-content {
+    max-width: 800px;
+    height: auto;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Classes utilitárias */
+.text-center {
     text-align: center;
 }
 
-.video-loading .spinner {
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #007bff;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
+.mt-20 {
+    margin-top: 20px;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.gap-10 {
+    gap: 10px;
+}
+
+.gap-20 {
+    gap: 20px;
+}
+
+/* Transições suaves */
+* {
+    scroll-behavior: smooth;
+}
+
+/* Estilos para links */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Estilos para seleção de texto */
+::selection {
+    background: var(--netflix-red);
+    color: white;
+}
+
+/* Estilos para o player quando em tela cheia */
+:fullscreen #video-container {
+    background: #000;
+}
+
+:-webkit-full-screen #video-container {
+    background: #000;
+}
+
+:-moz-full-screen #video-container {
+    background: #000;
+}
+
+/* Estilos para dispositivos móveis em orientação paisagem */
+@media (max-height: 600px) and (orientation: landscape) {
+    .modal-content {
+        height: 95vh;
+    }
+    
+    .featured-section {
+        height: 100vh;
+    }
+    
+    .content-item img {
+        height: 180px;
+    }
+}
+
+/* Estilos para telas muito grandes */
+@media (min-width: 1920px) {
+    .content-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+    
+    .content-item img {
+        height: 400px;
+    }
+    
+    .modal-content {
+        max-width: 1400px;
+        height: 80vh;
+    }
 }

@@ -1,4 +1,4 @@
-// script.js - VERSÃO COMPLETA COM PLAYER UNIFICADO E MEGA.NZ PADRÃO
+// script.js - VERSÃO COMPLETA COM TODOS OS SERVIÇOS DE HOSPEDAGEM
 // Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLPLXCc6JRfP43xDjL2j-GWwtMYLLY3Gk",
@@ -72,7 +72,12 @@ const SUPPORTED_SERVICES = {
   'google_drive': 'Google Drive',
   'youtube': 'YouTube', 
   'archive': 'Internet Archive',
-  'mega': 'Mega.nz'
+  'mega': 'Mega.nz',
+  'nitroflare': 'Nitro Flare',
+  'terabox': 'Terabox',
+  'four_shared': '4shared',
+  'playbook': 'Playbook',
+  'telegram': 'Telegram'
 };
 
 // Event Listeners
@@ -122,6 +127,16 @@ function processThumbnailUrl(url, sourceType) {
             return processGoogleDriveThumbnail(url);
         case 'mega':
             return processMegaThumbnail(url);
+        case 'nitroflare':
+            return `https://via.placeholder.com/300x450/1a1a2a/FFFF99?text=NITRO+FLARE`;
+        case 'terabox':
+            return `https://via.placeholder.com/300x450/1a1a2a/0088cc?text=TERABOX`;
+        case 'four_shared':
+            return `https://via.placeholder.com/300x450/1a1a2a/FFFFFF?text=4SHARED`;
+        case 'playbook':
+            return `https://via.placeholder.com/300x450/1a1a2a/4267B2?text=PLAYBOOK`;
+        case 'telegram':
+            return `https://via.placeholder.com/300x450/1a1a2a/0088cc?text=TELEGRAM`;
         default:
             return url; // Retorna original se não souber processar
     }
@@ -160,9 +175,197 @@ function getSourceIcon(sourceType) {
         'google_drive': 'google-drive',
         'mega': 'cloud',
         'direct': 'link',
-        'archive': 'archive'
+        'archive': 'archive',
+        'nitroflare': 'bolt',
+        'terabox': 'box',
+        'four_shared': 'share-alt',
+        'playbook': 'book',
+        'telegram': 'paper-plane'
     };
     return icons[sourceType] || 'video';
+}
+
+// =============================================
+// FUNÇÕES DE EXTRAÇÃO PARA NOVOS SERVIÇOS
+// =============================================
+
+// Extrair informações do link Mega.nz
+function extractMegaInfo(url) {
+    try {
+        console.log('🔍 Analisando URL do Mega:', url);
+        
+        // Padrões comuns do Mega.nz
+        const patterns = [
+            /mega\.nz\/(file|folder)\/([^#]+)#([^#\s]+)/, // Com chave
+            /mega\.nz\/(file|folder)\/([^#\s?]+)/,        // Sem chave
+            /mega\.nz\/(file|folder)\/([^#\s?]+)\?/       // Com parâmetros
+        ];
+        
+        for (let pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) {
+                const type = match[1]; // file ou folder
+                const fileId = match[2];
+                const key = match[3] || null;
+                
+                console.log('✅ Mega.nz detectado:', { type, fileId, key });
+                
+                // Determinar tipo de arquivo baseado na URL
+                let fileType = 'Vídeo';
+                if (url.match(/\.(mp4|avi|mkv|mov|wmv)$/i)) fileType = 'Vídeo';
+                else if (url.match(/\.(jpg|jpeg|png|gif)$/i)) fileType = 'Imagem';
+                else if (url.match(/\.(mp3|wav|flac)$/i)) fileType = 'Áudio';
+                
+                return {
+                    type: type,
+                    fileId: fileId,
+                    key: key,
+                    filename: extractFilenameFromUrl(url),
+                    fileType: fileType,
+                    directUrl: `https://mega.nz/${type}/${fileId}${key ? `#${key}` : ''}`
+                };
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do Mega:', error);
+        return null;
+    }
+}
+
+// Extrair informações do Nitro Flare
+function extractNitroFlareInfo(url) {
+    try {
+        // Nitro Flare padrão: https://nitroflare.com/view/FILE_ID/filename.ext
+        const match = url.match(/nitroflare\.com\/view\/([^\/]+)/);
+        if (match) {
+            return {
+                fileId: match[1],
+                filename: url.split('/').pop(),
+                service: 'nitroflare',
+                directUrl: url
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do Nitro Flare:', error);
+        return null;
+    }
+}
+
+// Extrair informações do Terabox
+function extractTeraboxInfo(url) {
+    try {
+        // Terabox padrão: https://terabox.com/s/FILE_ID
+        const match = url.match(/terabox\.com\/s\/([^\/\?]+)/);
+        if (match) {
+            return {
+                fileId: match[1],
+                service: 'terabox',
+                embedUrl: `https://www.terabox.com/sharing/embed?surl=${match[1]}`,
+                directUrl: url
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do Terabox:', error);
+        return null;
+    }
+}
+
+// Extrair informações do 4shared
+function extractFourSharedInfo(url) {
+    try {
+        // 4shared padrão: https://www.4shared.com/video/FILE_ID/filename
+        const match = url.match(/4shared\.com\/(video|file)\/([^\/]+)/);
+        if (match) {
+            return {
+                fileId: match[2],
+                type: match[1],
+                service: 'four_shared',
+                embedUrl: `https://www.4shared.com/embed/${match[2]}`,
+                directUrl: url
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do 4shared:', error);
+        return null;
+    }
+}
+
+// Extrair informações do Playbook (Facebook)
+function extractPlaybookInfo(url) {
+    try {
+        // Playbook (Facebook) - extrair ID da apresentação
+        const match = url.match(/facebook\.com\/[^\/]+\/posts\/([^\/\?]+)/) || 
+                     url.match(/fb\.watch\/([^\/\?]+)/) ||
+                     url.match(/facebook\.com\/[^\/]+\/videos\/([^\/\?]+)/);
+        
+        if (match) {
+            return {
+                videoId: match[1],
+                service: 'playbook',
+                embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}`,
+                directUrl: url
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do Playbook:', error);
+        return null;
+    }
+}
+
+// Extrair informações do Telegram
+function extractTelegramInfo(url) {
+    try {
+        // Telegram padrão: t.me/c/CHANNEL_ID/MESSAGE_ID ou t.me/username/MESSAGE_ID
+        const match = url.match(/t\.me\/(?:c\/(\d+)\/(\d+)|(\w+)\/(\d+))/);
+        if (match) {
+            if (match[1] && match[2]) {
+                // Canal privado
+                return {
+                    channelId: match[1],
+                    messageId: match[2],
+                    service: 'telegram',
+                    isPrivate: true,
+                    directUrl: url
+                };
+            } else if (match[3] && match[4]) {
+                // Canal público
+                return {
+                    username: match[3],
+                    messageId: match[4],
+                    service: 'telegram',
+                    isPrivate: false,
+                    directUrl: url
+                };
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro ao extrair info do Telegram:', error);
+        return null;
+    }
+}
+
+// Tentar extrair nome do arquivo da URL
+function extractFilenameFromUrl(url) {
+    try {
+        // Tenta encontrar o nome após o último /
+        const parts = url.split('/');
+        const lastPart = parts[parts.length - 1];
+        
+        // Remove parâmetros e fragments
+        const cleanName = lastPart.split('?')[0].split('#')[0];
+        
+        // Se for muito longo, trunca
+        return cleanName.length > 30 ? cleanName.substring(0, 30) + '...' : cleanName;
+    } catch (error) {
+        return 'Arquivo do Mega.nz';
+    }
 }
 
 // =============================================
@@ -225,6 +428,26 @@ function loadInUnifiedPlayer(content) {
             
         case 'archive':
             loadArchiveInUnifiedPlayer(content, videoContainer);
+            break;
+            
+        case 'nitroflare':
+            loadNitroFlareInUnifiedPlayer(content, videoContainer);
+            break;
+            
+        case 'terabox':
+            loadTeraboxInUnifiedPlayer(content, videoContainer);
+            break;
+            
+        case 'four_shared':
+            loadFourSharedInUnifiedPlayer(content, videoContainer);
+            break;
+            
+        case 'playbook':
+            loadPlaybookInUnifiedPlayer(content, videoContainer);
+            break;
+            
+        case 'telegram':
+            loadTelegramInUnifiedPlayer(content, videoContainer);
             break;
             
         default:
@@ -466,6 +689,333 @@ function loadArchiveInUnifiedPlayer(content, container) {
     `;
 }
 
+// Nitro Flare no player unificado
+function loadNitroFlareInUnifiedPlayer(content, container) {
+    console.log('🔧 Processando Nitro Flare...');
+    
+    const nitroInfo = extractNitroFlareInfo(content.videoUrl);
+    
+    if (!nitroInfo) {
+        showError('Link do Nitro Flare inválido', container, null, content.videoUrl, 'Nitro Flare');
+        return;
+    }
+    
+    // Nitro Flare não tem player nativo, então oferecemos opções
+    container.innerHTML = `
+        <div class="netflix-player">
+            <div class="video-wrapper">
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 30px; background: linear-gradient(135deg, #1a1a2a 0%, #0a0a1a 100%);">
+                    <i class="fas fa-bolt" style="font-size: 4rem; color: #FFFF99; margin-bottom: 20px;"></i>
+                    <h2 style="color: #FFFF99; margin-bottom: 15px;">Arquivo Nitro Flare</h2>
+                    
+                    <div style="background: rgba(255, 255, 153, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 25px; max-width: 500px; border: 1px solid rgba(255, 255, 153, 0.3);">
+                        <p style="margin-bottom: 10px;"><strong>Arquivo:</strong> ${nitroInfo.filename || 'Não identificado'}</p>
+                        <p style="word-break: break-all; font-size: 0.9rem; color: #ccc;">
+                            <strong>URL:</strong> ${content.videoUrl}
+                        </p>
+                    </div>
+                    
+                    <p style="color: #b3b3b3; margin-bottom: 25px; max-width: 600px;">
+                        O Nitro Flare não possui player de vídeo integrado. Escolha uma opção abaixo:
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; width: 100%; max-width: 600px; margin-bottom: 25px;">
+                        <button onclick="downloadNitroFlareFile('${content.videoUrl}')" 
+                                style="padding: 15px; background: linear-gradient(135deg, #FF0000 0%, #ff3333 100%); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.3s;">
+                            <i class="fas fa-download" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>Download Direto</strong>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Assistir localmente</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="openNitroFlareLink('${content.videoUrl}')" 
+                                style="padding: 15px; background: linear-gradient(135deg, #000080 0%, #3333aa 100%); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.3s;">
+                            <i class="fas fa-external-link-alt" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>Abrir no Site</strong>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Player do navegador</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="tryVideoStream('${content.videoUrl}')" 
+                                style="padding: 15px; background: linear-gradient(135deg, #008000 0%, #00cc00 100%); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.3s;">
+                            <i class="fas fa-play-circle" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>Tentar Stream</strong>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Experimental</div>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; max-width: 600px;">
+                        <h4 style="color: #FFFF99; margin-bottom: 15px;">💡 Informações:</h4>
+                        <ul style="text-align: left; color: #b3b3b3; line-height: 1.6; font-size: 0.9rem;">
+                            <li>Nitro Flare é principalmente um serviço de download</li>
+                            <li>Para assistir online, faça download e use um player local</li>
+                            <li>Alguns navegadores podem reproduzir vídeos diretamente</li>
+                            <li>Considere migrar para Mega.nz ou Google Drive para streaming</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="player-controls">
+                    <div class="controls-top">
+                        <button class="control-btn back-btn" onclick="closeVideoPlayer()" title="Voltar">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 class="video-title">${content.title}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Terabox no player unificado
+function loadTeraboxInUnifiedPlayer(content, container) {
+    console.log('🔧 Processando Terabox...');
+    
+    const teraboxInfo = extractTeraboxInfo(content.videoUrl);
+    
+    if (!teraboxInfo) {
+        showError('Link do Terabox inválido', container, null, content.videoUrl, 'Terabox');
+        return;
+    }
+    
+    // Terabox tem player nativo via embed
+    const embedUrl = teraboxInfo.embedUrl || `https://www.terabox.com/sharing/embed?surl=${teraboxInfo.fileId}`;
+    
+    container.innerHTML = `
+        <div class="netflix-player">
+            <div class="video-wrapper">
+                <iframe 
+                    src="${embedUrl}"
+                    frameborder="0"
+                    allowfullscreen
+                    class="terabox-iframe"
+                    style="width: 100%; height: 100%;"
+                    onload="console.log('✅ Terabox embed carregado')"
+                    onerror="showEmbedError(this, '${content.videoUrl}', 'Terabox')">
+                </iframe>
+                
+                <div class="player-controls">
+                    <div class="controls-top">
+                        <button class="control-btn back-btn" onclick="closeVideoPlayer()" title="Voltar">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 class="video-title">${content.title}</h3>
+                    </div>
+                    
+                    <div class="controls-bottom">
+                        <button class="control-btn fullscreen-btn" onclick="toggleFullscreen(this)" title="Tela Cheia">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 4shared no player unificado
+function loadFourSharedInUnifiedPlayer(content, container) {
+    console.log('🔧 Processando 4shared...');
+    
+    const fourSharedInfo = extractFourSharedInfo(content.videoUrl);
+    
+    if (!fourSharedInfo) {
+        showError('Link do 4shared inválido', container, null, content.videoUrl, '4shared');
+        return;
+    }
+    
+    // 4shared tem player nativo via embed
+    const embedUrl = fourSharedInfo.embedUrl || `https://www.4shared.com/embed/${fourSharedInfo.fileId}`;
+    
+    container.innerHTML = `
+        <div class="netflix-player">
+            <div class="video-wrapper">
+                <iframe 
+                    src="${embedUrl}"
+                    frameborder="0"
+                    allowfullscreen
+                    class="fourshared-iframe"
+                    style="width: 100%; height: 100%;"
+                    onload="console.log('✅ 4shared embed carregado')"
+                    onerror="showEmbedError(this, '${content.videoUrl}', '4shared')">
+                </iframe>
+                
+                <div class="player-controls">
+                    <div class="controls-top">
+                        <button class="control-btn back-btn" onclick="closeVideoPlayer()" title="Voltar">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 class="video-title">${content.title}</h3>
+                    </div>
+                    
+                    <div class="controls-bottom">
+                        <button class="control-btn fullscreen-btn" onclick="toggleFullscreen(this)" title="Tela Cheia">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Playbook no player unificado
+function loadPlaybookInUnifiedPlayer(content, container) {
+    console.log('🔧 Processando Playbook...');
+    
+    const playbookInfo = extractPlaybookInfo(content.videoUrl);
+    
+    if (!playbookInfo) {
+        // Tenta carregar como iframe direto (Facebook tem player)
+        container.innerHTML = `
+            <div class="netflix-player">
+                <div class="video-wrapper">
+                    <iframe 
+                        src="https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(content.videoUrl)}&show_text=false"
+                        frameborder="0"
+                        allowfullscreen
+                        class="playbook-iframe"
+                        style="width: 100%; height: 100%;"
+                        onload="console.log('✅ Playbook embed carregado')"
+                        onerror="showEmbedError(this, '${content.videoUrl}', 'Playbook')">
+                    </iframe>
+                    
+                    <div class="player-controls">
+                        <div class="controls-top">
+                            <button class="control-btn back-btn" onclick="closeVideoPlayer()" title="Voltar">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <h3 class="video-title">${content.title}</h3>
+                        </div>
+                        
+                        <div class="controls-bottom">
+                            <button class="control-btn fullscreen-btn" onclick="toggleFullscreen(this)" title="Tela Cheia">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Usa o embed do Facebook
+    container.innerHTML = `
+        <div class="netflix-player">
+            <div class="video-wrapper">
+                <iframe 
+                    src="${playbookInfo.embedUrl}"
+                    frameborder="0"
+                    allowfullscreen
+                    class="playbook-iframe"
+                    style="width: 100%; height: 100%;"
+                    onload="console.log('✅ Playbook embed carregado')"
+                    onerror="showEmbedError(this, '${content.videoUrl}', 'Playbook')">
+                </iframe>
+                
+                <div class="player-controls">
+                    <div class="controls-top">
+                        <button class="control-btn back-btn" onclick="closeVideoPlayer()" title="Voltar">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 class="video-title">${content.title}</h3>
+                    </div>
+                    
+                    <div class="controls-bottom">
+                        <button class="control-btn fullscreen-btn" onclick="toggleFullscreen(this)" title="Tela Cheia">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Telegram no player unificado
+function loadTelegramInUnifiedPlayer(content, container) {
+    console.log('🔧 Processando Telegram...');
+    
+    const telegramInfo = extractTelegramInfo(content.videoUrl);
+    
+    // Telegram não tem embed oficial, então oferecemos opções
+    container.innerHTML = `
+        <div class="netflix-player">
+            <div class="video-wrapper">
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 30px; background: linear-gradient(135deg, #000080 0%, #000055 100%);">
+                    <i class="fab fa-telegram" style="font-size: 4rem; color: #0088cc; margin-bottom: 20px;"></i>
+                    <h2 style="color: #0088cc; margin-bottom: 15px;">Conteúdo do Telegram</h2>
+                    
+                    <div style="background: rgba(0, 136, 204, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 25px; max-width: 500px; border: 1px solid rgba(0, 136, 204, 0.3);">
+                        <p style="margin-bottom: 10px;"><strong>Título:</strong> ${content.title}</p>
+                        <p style="word-break: break-all; font-size: 0.9rem; color: #ccc;">
+                            <strong>URL:</strong> ${content.videoUrl}
+                        </p>
+                    </div>
+                    
+                    <p style="color: #b3b3b3; margin-bottom: 25px; max-width: 600px;">
+                        O Telegram não oferece player público para embedding. Escolha uma opção:
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; width: 100%; max-width: 600px; margin-bottom: 25px;">
+                        <button onclick="openTelegramLink('${content.videoUrl}')" 
+                                style="padding: 15px; background: #0088cc; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.3s;">
+                            <i class="fab fa-telegram" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>Abrir no Telegram</strong>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Player oficial</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="tryTelegramProxy('${content.videoUrl}')" 
+                                style="padding: 15px; background: linear-gradient(135deg, #000080 0%, #3333aa 100%); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.3s;">
+                            <i class="fas fa-link" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>Proxy Web</strong>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">web.telegram.org</div>
+                            </div>
+                        </button>
+                        
+                        <button onclick="downloadTelegramVideo('${content.videoUrl}')" 
+                                style="padding: 15px; background: linear-gradient(135deg, #008000 0%, #00cc00 100%); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.3s;">
+                            <i class="fas fa-download" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>Baixar Vídeo</strong>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Assistir localmente</div>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; max-width: 600px;">
+                        <h4 style="color: #0088cc; margin-bottom: 15px;">💡 Dicas para Telegram:</h4>
+                        <ul style="text-align: left; color: #b3b3b3; line-height: 1.6; font-size: 0.9rem;">
+                            <li>Use o app oficial do Telegram para melhor experiência</li>
+                            <li>Canais públicos são mais fáceis de acessar</li>
+                            <li>Para embedding, considere usar YouTube ou Vimeo</li>
+                            <li>Alguns bots do Telegram podem gerar links diretos</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="player-controls">
+                    <div class="controls-top">
+                        <button class="control-btn back-btn" onclick="closeVideoPlayer()" title="Voltar">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h3 class="video-title">${content.title}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // Genérico no player unificado
 function loadGenericInUnifiedPlayer(content, container) {
     console.log('🔧 Processando fonte genérica no player unificado...');
@@ -635,72 +1185,6 @@ function showEmbedError(iframe, url, sourceType) {
 }
 
 // =============================================
-// SISTEMA MEGA.NZ MELHORADO (para fallback)
-// =============================================
-
-// Função para extrair informações do link Mega.nz
-function extractMegaInfo(url) {
-    try {
-        console.log('🔍 Analisando URL do Mega:', url);
-        
-        // Padrões comuns do Mega.nz
-        const patterns = [
-            /mega\.nz\/(file|folder)\/([^#]+)#([^#\s]+)/, // Com chave
-            /mega\.nz\/(file|folder)\/([^#\s?]+)/,        // Sem chave
-            /mega\.nz\/(file|folder)\/([^#\s?]+)\?/       // Com parâmetros
-        ];
-        
-        for (let pattern of patterns) {
-            const match = url.match(pattern);
-            if (match) {
-                const type = match[1]; // file ou folder
-                const fileId = match[2];
-                const key = match[3] || null;
-                
-                console.log('✅ Mega.nz detectado:', { type, fileId, key });
-                
-                // Determinar tipo de arquivo baseado na URL
-                let fileType = 'Vídeo';
-                if (url.match(/\.(mp4|avi|mkv|mov|wmv)$/i)) fileType = 'Vídeo';
-                else if (url.match(/\.(jpg|jpeg|png|gif)$/i)) fileType = 'Imagem';
-                else if (url.match(/\.(mp3|wav|flac)$/i)) fileType = 'Áudio';
-                
-                return {
-                    type: type,
-                    fileId: fileId,
-                    key: key,
-                    filename: extractFilenameFromUrl(url),
-                    fileType: fileType,
-                    directUrl: `https://mega.nz/${type}/${fileId}${key ? `#${key}` : ''}`
-                };
-            }
-        }
-        
-        return null;
-    } catch (error) {
-        console.error('Erro ao extrair info do Mega:', error);
-        return null;
-    }
-}
-
-// Tentar extrair nome do arquivo da URL
-function extractFilenameFromUrl(url) {
-    try {
-        // Tenta encontrar o nome após o último /
-        const parts = url.split('/');
-        const lastPart = parts[parts.length - 1];
-        
-        // Remove parâmetros e fragments
-        const cleanName = lastPart.split('?')[0].split('#')[0];
-        
-        // Se for muito longo, trunca
-        return cleanName.length > 30 ? cleanName.substring(0, 30) + '...' : cleanName;
-    } catch (error) {
-        return 'Arquivo do Mega.nz';
-    }
-}
-
-// =============================================
 // FUNÇÕES AUXILIARES
 // =============================================
 
@@ -833,6 +1317,84 @@ function copyUrl(url) {
         document.body.removeChild(textArea);
         showMessage('URL copiada!', 'success');
     });
+}
+
+// Funções para novos serviços
+function downloadNitroFlareFile(url) {
+    console.log('📥 Iniciando download do Nitro Flare:', url);
+    window.open(url, '_blank');
+    showMessage('Abrindo Nitro Flare para download...', 'info');
+}
+
+function openNitroFlareLink(url) {
+    console.log('🔗 Abrindo Nitro Flare:', url);
+    window.open(url, '_blank');
+    showMessage('Abrindo Nitro Flare em nova aba...', 'info');
+}
+
+function tryVideoStream(url) {
+    console.log('🎬 Tentando stream direto:', url);
+    // Tenta abrir como vídeo direto (alguns navegadores conseguem)
+    window.open(url, '_blank');
+    showMessage('Tentando reprodução direta...', 'info');
+}
+
+function openTelegramLink(url) {
+    console.log('🔗 Abrindo Telegram:', url);
+    window.open(url, '_blank');
+    showMessage('Abrindo Telegram...', 'info');
+}
+
+function tryTelegramProxy(url) {
+    console.log('🔗 Tentando proxy do Telegram:', url);
+    // Tenta abrir via web.telegram.org
+    const proxyUrl = `https://web.telegram.org/k/#${url.replace('https://t.me/', '')}`;
+    window.open(proxyUrl, '_blank');
+    showMessage('Abrindo via Telegram Web...', 'info');
+}
+
+function downloadTelegramVideo(url) {
+    console.log('📥 Tentando download do Telegram:', url);
+    // Para Telegram, geralmente precisa usar o app
+    window.open(url, '_blank');
+    showMessage('Use o app do Telegram para baixar o vídeo', 'info');
+}
+
+// =============================================
+// VALIDAÇÃO DE URL POR SERVIÇO
+// =============================================
+
+// Validar URL
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+// Validar URL por tipo de fonte
+function validateSourceUrl(url, sourceType) {
+    if (!isValidUrl(url)) {
+        return false;
+    }
+    
+    // Validações específicas por tipo de fonte
+    switch(sourceType) {
+        case 'nitroflare':
+            return url.includes('nitroflare.com');
+        case 'terabox':
+            return url.includes('terabox.com');
+        case 'four_shared':
+            return url.includes('4shared.com');
+        case 'playbook':
+            return url.includes('facebook.com') || url.includes('fb.watch');
+        case 'telegram':
+            return url.includes('t.me');
+        default:
+            return true;
+    }
 }
 
 // =============================================
@@ -1225,7 +1787,7 @@ function updateFeaturedContent() {
         featuredDescription.textContent = featuredContent.description;
         // Processar thumbnail para a seção em destaque também
         const processedThumbnail = processThumbnailUrl(featuredContent.thumbnail, featuredContent.sourceType);
-        featuredSection.style.backgroundImage = `linear-gradient(to top, var(--bg-darker) 0%, transparent 60%), url('${processedThumbnail}')`;
+        featuredSection.style.backgroundImage = `linear-gradient(to top, var(--fundo-escuro) 0%, transparent 60%), url('${processedThumbnail}')`;
     }
 }
 
@@ -1298,6 +1860,52 @@ function showSourceInstructions(sourceType) {
                 <p><strong>Thumbnail:</strong> Use thumbnails do Archive ou imagens personalizadas</p>
                 <p><strong>Exemplo:</strong> https://archive.org/details/NOME_DO_VIDEO</p>
             </div>
+        `,
+        'nitroflare': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-bolt"></i> Nitro Flare:</h4>
+                <p><strong>Formato do link:</strong> https://nitroflare.com/view/FILE_ID/NOME_DO_ARQUIVO</p>
+                <p><strong>Thumbnail:</strong> Use imagens externas ou screenshots</p>
+                <p><strong>Observação:</strong> Nitro Flare não possui player nativo. O sistema tentará extrair o arquivo para reprodução direta.</p>
+                <p><strong>Recomendação:</strong> Para melhor experiência, considere usar Mega.nz ou Google Drive.</p>
+            </div>
+        `,
+        'terabox': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-box"></i> Terabox:</h4>
+                <p><strong>Formato do link:</strong> https://terabox.com/s/FILE_ID</p>
+                <p><strong>Player nativo:</strong> Sim, o Terabox possui player de vídeo integrado</p>
+                <p><strong>Thumbnail:</strong> Use thumbnails do Terabox ou imagens personalizadas</p>
+                <p><strong>Compatibilidade:</strong> Excelente, suporta embedding</p>
+            </div>
+        `,
+        'four_shared': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-share-alt"></i> 4shared:</h4>
+                <p><strong>Formato do link:</strong> https://www.4shared.com/video/FILE_ID/NOME_DO_ARQUIVO</p>
+                <p><strong>Player nativo:</strong> Sim, possui player de vídeo</p>
+                <p><strong>Thumbnail:</strong> Use thumbnails do 4shared ou imagens externas</p>
+                <p><strong>Limitações:</strong> Requer login para arquivos grandes</p>
+            </div>
+        `,
+        'playbook': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-book"></i> Playbook:</h4>
+                <p><strong>Formato do link:</strong> Link completo da apresentação/documento</p>
+                <p><strong>Player nativo:</strong> Sim, para apresentações e documentos</p>
+                <p><strong>Thumbnail:</strong> Use screenshots ou imagens relacionadas</p>
+                <p><strong>Observação:</strong> Principalmente para apresentações, não apenas vídeos</p>
+            </div>
+        `,
+        'telegram': `
+            <div class="source-instructions">
+                <h4><i class="fas fa-paper-plane"></i> Telegram:</h4>
+                <p><strong>Formato do link:</strong> https://t.me/canal/ID_DA_MENSAGEM</p>
+                <p><strong>Player nativo:</strong> Sim, possui player básico</p>
+                <p><strong>Thumbnail:</strong> Use thumbnails geradas ou imagens externas</p>
+                <p><strong>Limitações:</strong> Links precisam ser públicos ou do canal</p>
+                <p><strong>Dica:</strong> Use o link direto da mensagem contendo o vídeo</p>
+            </div>
         `
     };
     
@@ -1356,6 +1964,13 @@ function handleAddContent(e) {
         return;
     }
     
+    // Validar URL específica do serviço
+    if (!validateSourceUrl(videoUrl, sourceType)) {
+        showMessage(`URL do ${SUPPORTED_SERVICES[sourceType]} inválida. Verifique o formato.`, 'error');
+        hideLoading();
+        return;
+    }
+    
     const contentData = {
         title,
         description,
@@ -1378,16 +1993,6 @@ function handleAddContent(e) {
         hideLoading();
         showMessage('Erro ao adicionar conteúdo: ' + error.message, 'error');
     });
-}
-
-// Validar URL
-function isValidUrl(string) {
-    try {
-        new URL(string);
-        return true;
-    } catch (_) {
-        return false;
-    }
 }
 
 // Carregar lista de usuários (admin)
@@ -1668,7 +2273,7 @@ function hideLoading() {
 // Adicionar estilos dinâmicos
 const style = document.createElement('style');
 style.textContent = `
-    .text-secondary { color: var(--text-secondary); }
+    .text-secondary { color: var(--texto-secundario); }
     .source-type { 
         padding: 4px 8px; 
         background: rgba(255,255,255,0.1); 
@@ -1676,15 +2281,15 @@ style.textContent = `
         font-size: 11px; 
     }
     .source-instructions {
-        background: rgba(0, 0, 128, 0.1);
+        background: rgba(255, 0, 0, 0.1);
         padding: 15px;
-        border-radius: var(--border-radius-sm);
-        border-left: 4px solid var(--primary-color);
+        border-radius: var(--raio-borda-pequeno);
+        border-left: 4px solid var(--vermelho-principal);
         margin: 15px 0;
         font-size: 14px;
     }
     .source-instructions h4 {
-        color: var(--text-color);
+        color: var(--texto-principal);
         margin-bottom: 10px;
         display: flex;
         align-items: center;
@@ -1692,11 +2297,11 @@ style.textContent = `
     }
     .source-instructions p {
         margin-bottom: 8px;
-        color: var(--text-secondary);
+        color: var(--texto-secundario);
     }
     .source-instructions ul {
         padding-left: 20px;
-        color: var(--text-secondary);
+        color: var(--texto-secundario);
     }
     .source-instructions li {
         margin-bottom: 5px;
@@ -1724,11 +2329,13 @@ style.textContent = `
         padding: 4px 8px;
         border-radius: 12px;
         font-size: 10px;
-        color: white;
+        color: #FFFF99;
         display: flex;
         align-items: center;
         gap: 4px;
         backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 153, 0.3);
+        z-index: 3;
     }
     
     .content-item {
@@ -1742,12 +2349,15 @@ style.textContent = `
         background: #000;
         position: relative;
         overflow: hidden;
+        border: 2px solid #000080;
+        border-radius: 12px;
     }
     
     .video-wrapper {
         width: 100%;
         height: 100%;
         position: relative;
+        overflow: hidden;
     }
     
     .video-element {
@@ -1766,12 +2376,15 @@ style.textContent = `
         background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
         padding: 20px;
         z-index: 5;
-        transition: opacity 0.3s;
+        transition: all 0.3s;
+        animation: slideIn 0.3s ease-out;
+        border-top: 1px solid rgba(255, 255, 153, 0.2);
     }
     
     .player-controls.hidden {
         opacity: 0;
         pointer-events: none;
+        animation: fadeIn 0.3s ease-out reverse;
     }
     
     .controls-top {
@@ -1790,8 +2403,8 @@ style.textContent = `
     
     /* Botões de controle */
     .control-btn {
-        background: rgba(0, 0, 0, 0.7);
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: rgba(0, 0, 128, 0.7);
+        border: 2px solid rgba(255, 255, 153, 0.3);
         color: white;
         width: 40px;
         height: 40px;
@@ -1805,24 +2418,34 @@ style.textContent = `
     }
     
     .control-btn:hover {
-        background: rgba(0, 0, 0, 0.9);
-        border-color: white;
+        background: rgba(255, 0, 0, 0.7);
+        border-color: #FFFF99;
         transform: scale(1.1);
+        box-shadow: 0 0 15px rgba(255, 255, 153, 0.5);
     }
     
     .back-btn {
-        background: rgba(0, 0, 128, 0.8);
+        background: rgba(255, 0, 0, 0.8);
+        border-color: rgba(255, 255, 255, 0.3);
     }
     
     .play-btn {
         width: 60px;
         height: 60px;
-        background: rgba(229, 9, 20, 0.9);
+        background: linear-gradient(135deg, #FF0000 0%, #ff3333 100%);
+        border: none;
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
     }
     
     .play-btn:hover {
-        background: #e50914;
+        background: linear-gradient(135deg, #ff3333 0%, #FF0000 100%);
         transform: scale(1.15);
+        box-shadow: 0 0 30px rgba(255, 0, 0, 0.7);
+    }
+    
+    .play-btn i {
+        font-size: 20px;
+        color: white;
     }
     
     /* Barra de progresso */
@@ -1834,10 +2457,16 @@ style.textContent = `
     .progress-bar {
         width: 100%;
         height: 4px;
-        background: rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.2);
         border-radius: 2px;
         position: relative;
         cursor: pointer;
+        transition: height 0.2s;
+        overflow: hidden;
+    }
+    
+    .progress-bar:hover {
+        height: 6px;
     }
     
     .progress-fill {
@@ -1845,9 +2474,10 @@ style.textContent = `
         top: 0;
         left: 0;
         height: 100%;
-        background: #e50914;
+        background: linear-gradient(to right, #000080, #FF0000, #008000);
         border-radius: 2px;
         width: 0%;
+        transition: width 0.1s;
     }
     
     .progress-handle {
@@ -1856,14 +2486,16 @@ style.textContent = `
         transform: translate(-50%, -50%);
         width: 12px;
         height: 12px;
-        background: #e50914;
+        background: #FFFF99;
         border-radius: 50%;
         opacity: 0;
-        transition: opacity 0.3s;
+        transition: all 0.3s;
+        box-shadow: 0 0 10px rgba(255, 255, 153, 0.8);
     }
     
     .progress-bar:hover .progress-handle {
         opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
     }
     
     .time-display {
@@ -1872,6 +2504,10 @@ style.textContent = `
         margin-top: 5px;
         font-size: 12px;
         color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .time-display span {
+        font-weight: 500;
     }
     
     /* Botões laterais */
@@ -1884,24 +2520,38 @@ style.textContent = `
     .volume-slider {
         width: 80px;
         margin-right: 10px;
+        transition: all 0.3s;
+    }
+    
+    .volume-slider.hidden {
+        opacity: 0;
+        pointer-events: none;
     }
     
     .volume-control {
         width: 100%;
         height: 4px;
         -webkit-appearance: none;
-        background: rgba(255, 255, 255, 0.3);
+        background: linear-gradient(to right, #000080, #FF0000);
         border-radius: 2px;
         outline: none;
+        cursor: pointer;
     }
     
     .volume-control::-webkit-slider-thumb {
         -webkit-appearance: none;
-        width: 12px;
-        height: 12px;
-        background: #e50914;
+        width: 14px;
+        height: 14px;
+        background: #FFFF99;
         border-radius: 50%;
         cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid #FF0000;
+    }
+    
+    .volume-control::-webkit-slider-thumb:hover {
+        transform: scale(1.3);
+        box-shadow: 0 0 10px rgba(255, 255, 153, 0.8);
     }
     
     /* Título do vídeo */
@@ -1911,6 +2561,10 @@ style.textContent = `
         font-weight: bold;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         margin: 0;
+        padding: 5px 10px;
+        background: rgba(0, 0, 128, 0.3);
+        border-radius: 8px;
+        border-left: 3px solid #FF0000;
     }
     
     /* Iframes */
@@ -1918,10 +2572,14 @@ style.textContent = `
     .youtube-iframe,
     .gdrive-iframe,
     .archive-iframe,
+    .terabox-iframe,
+    .fourshared-iframe,
+    .playbook-iframe,
     .generic-iframe {
         width: 100%;
         height: 100%;
         border: none;
+        filter: brightness(0.95) contrast(1.1);
     }
     
     /* Ajustes para iframes dentro do player */
@@ -1933,67 +2591,65 @@ style.textContent = `
     /* Estado de tela cheia */
     .netflix-player:fullscreen {
         background: #000;
+        width: 100vw;
+        height: 100vh;
     }
     
     .netflix-player:fullscreen .video-wrapper {
         height: 100vh;
     }
     
-    /* Responsividade para controles */
-    @media (max-width: 768px) {
-        .player-controls {
-            padding: 15px;
-        }
-        
-        .control-btn {
-            width: 35px;
-            height: 35px;
-            font-size: 14px;
-        }
-        
-        .play-btn {
-            width: 50px;
-            height: 50px;
-        }
-        
-        .video-title {
-            font-size: 1rem;
-        }
-        
-        .controls-bottom {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 10px;
-        }
-        
-        .progress-container {
-            margin-right: 0;
-        }
-        
-        .control-buttons {
-            justify-content: center;
-        }
+    .netflix-player:fullscreen .player-controls {
+        padding-bottom: 40px;
     }
     
-    /* Ajustes para modal de vídeo */
+    .netflix-player:fullscreen .control-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+    
+    .netflix-player:fullscreen .play-btn {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .netflix-player:fullscreen .play-btn i {
+        font-size: 24px;
+    }
+    
+    /* Modal de Vídeo */
     #video-modal .modal-content {
-        background: #000;
+        background: #0A0A14;
+        border: 3px solid #000080;
         padding: 0;
+        box-shadow: 0 0 50px rgba(0, 0, 128, 0.5);
     }
     
     #video-modal .close-modal {
         position: absolute;
         top: 15px;
         right: 20px;
-        background: rgba(0, 0, 0, 0.8);
+        background: rgba(255, 0, 0, 0.8);
         z-index: 100;
         color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        border: 2px solid #FFFF99;
+        transition: all 0.3s;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
     }
     
     #video-modal .close-modal:hover {
-        background: rgba(229, 9, 20, 0.8);
+        background: #FF0000;
         border-color: white;
+        transform: rotate(90deg) scale(1.1);
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
     }
     
     /* Esconder controles nativos de vídeo */
@@ -2002,8 +2658,23 @@ style.textContent = `
     }
     
     /* Garantir que iframes não mostrem controles nativos */
-    .mega-iframe::-webkit-media-controls {
+    .mega-iframe::-webkit-media-controls,
+    .youtube-iframe::-webkit-media-controls,
+    .gdrive-iframe::-webkit-media-controls,
+    .terabox-iframe::-webkit-media-controls,
+    .fourshared-iframe::-webkit-media-controls {
         display: none !important;
+    }
+    
+    /* Animações */
+    @keyframes slideIn {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 `;
 document.head.appendChild(style);
@@ -2021,3 +2692,9 @@ window.closeVideoPlayer = closeVideoPlayer;
 window.togglePlayDirect = togglePlayDirect;
 window.toggleVolumeSlider = toggleVolumeSlider;
 window.seekVideoDirect = seekVideoDirect;
+window.downloadNitroFlareFile = downloadNitroFlareFile;
+window.openNitroFlareLink = openNitroFlareLink;
+window.tryVideoStream = tryVideoStream;
+window.openTelegramLink = openTelegramLink;
+window.tryTelegramProxy = tryTelegramProxy;
+window.downloadTelegramVideo = downloadTelegramVideo;

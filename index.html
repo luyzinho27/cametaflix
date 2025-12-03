@@ -28,14 +28,14 @@
                 <h2>Entrar</h2>
                 
                 <div class="input-group">
-                    <input type="email" id="login-email" required>
+                    <input type="email" id="login-email" required placeholder=" ">
                     <label for="login-email">
                         <i class="fas fa-envelope"></i>E-mail
                     </label>
                 </div>
                 
                 <div class="input-group">
-                    <input type="password" id="login-password" required>
+                    <input type="password" id="login-password" required placeholder=" ">
                     <label for="login-password">
                         <i class="fas fa-lock"></i>Senha
                     </label>
@@ -65,14 +65,14 @@
                 <h2>Cadastrar</h2>
                 
                 <div class="input-group">
-                    <input type="email" id="register-email" required>
+                    <input type="email" id="register-email" required placeholder=" ">
                     <label for="register-email">
                         <i class="fas fa-envelope"></i>E-mail
                     </label>
                 </div>
                 
                 <div class="input-group">
-                    <input type="password" id="register-password" required minlength="6">
+                    <input type="password" id="register-password" required minlength="6" placeholder=" ">
                     <label for="register-password">
                         <i class="fas fa-lock"></i>Senha (mín. 6 caracteres)
                     </label>
@@ -173,7 +173,7 @@
                     <form id="content-form">
                         <div class="form-row">
                             <div class="input-group">
-                                <input type="text" id="content-title" required>
+                                <input type="text" id="content-title" required placeholder=" ">
                                 <label for="content-title">
                                     <i class="fas fa-heading"></i>Título
                                 </label>
@@ -191,7 +191,7 @@
                         </div>
                         
                         <div class="input-group">
-                            <textarea id="content-description" required></textarea>
+                            <textarea id="content-description" required placeholder=" "></textarea>
                             <label for="content-description">
                                 <i class="fas fa-align-left"></i>Descrição
                             </label>
@@ -213,9 +213,10 @@
                                     <option value="youtube">YouTube</option>
                                     <option value="archive">Internet Archive</option>
                                     <option value="mega">Mega.nz</option>
+                                    <!-- NOVOS SERVIÇOS ADICIONADOS -->
                                     <option value="nitroflare">Nitro Flare</option>
                                     <option value="terabox">Terabox</option>
-                                    <option value="four_shared">4shared</option>
+                                    <option value="fourshared">4shared</option>
                                     <option value="playbook">Playbook</option>
                                     <option value="telegram">Telegram</option>
                                 </select>
@@ -241,11 +242,12 @@
                                 <li><strong>YouTube:</strong> URLs de vídeos públicos ou não-listados</li>
                                 <li><strong>Internet Archive:</strong> Links do archive.org</li>
                                 <li><strong>Mega.nz:</strong> Links públicos do Mega</li>
-                                <li><strong>Nitro Flare:</strong> Links de download (sem player nativo)</li>
-                                <li><strong>Terabox:</strong> Links com player integrado</li>
-                                <li><strong>4shared:</strong> Player de vídeo online</li>
-                                <li><strong>Playbook:</strong> Apresentações e documentos do Facebook</li>
-                                <li><strong>Telegram:</strong> Links de canais/mensagens (app necessário)</li>
+                                <!-- NOVOS SERVIÇOS -->
+                                <li><strong>Nitro Flare:</strong> Links do Nitro Flare (player HTML5 para vídeos diretos)</li>
+                                <li><strong>Terabox:</strong> Links públicos do Terabox</li>
+                                <li><strong>4shared:</strong> Links do 4shared com player nativo</li>
+                                <li><strong>Playbook:</strong> Links do Playbook</li>
+                                <li><strong>Telegram:</strong> Links de vídeos públicos do Telegram</li>
                             </ul>
                         </div>
                         
@@ -300,24 +302,24 @@
     </div>
 
     <!-- Modal de Vídeo -->
-<div id="video-modal" class="modal hidden">
-    <div class="modal-content" style="width: 95%; max-width: 1200px; height: 80vh;">
-        <span class="close-modal" style="position: absolute; top: 15px; right: 20px; font-size: 30px; color: red; cursor: pointer; z-index: 1001;">&times;</span>
-        
-        <div id="video-container" style="width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center;">
-            <div id="video-placeholder" style="color: white; text-align: center; padding: 20px;">
-                <i class="fas fa-film" style="font-size: 3rem; margin-bottom: 20px;"></i>
-                <h3>Preparando o vídeo...</h3>
-                <p id="video-url-display" style="word-break: break-all; font-size: 12px; color: #ccc; margin-top: 10px;"></p>
+    <div id="video-modal" class="modal hidden">
+        <div class="modal-content" style="width: 95%; max-width: 1200px; height: 80vh;">
+            <span class="close-modal" style="position: absolute; top: 15px; right: 20px; font-size: 30px; color: red; cursor: pointer; z-index: 1001;">&times;</span>
+            
+            <div id="video-container" style="width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center;">
+                <div id="video-placeholder" style="color: white; text-align: center; padding: 20px;">
+                    <i class="fas fa-film" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                    <h3>Preparando o vídeo...</h3>
+                    <p id="video-url-display" style="word-break: break-all; font-size: 12px; color: #ccc; margin-top: 10px;"></p>
+                </div>
+            </div>
+            
+            <div style="padding: 20px; background: #1a1a1a; border-top: 2px solid #333;">
+                <h3 id="video-title" style="color: white; margin-bottom: 10px;">Título do Vídeo</h3>
+                <p id="video-description" style="color: #ccc;">Descrição do vídeo</p>
             </div>
         </div>
-        
-        <div style="padding: 20px; background: #1a1a1a; border-top: 2px solid #333;">
-            <h3 id="video-title" style="color: white; margin-bottom: 10px;">Título do Vídeo</h3>
-            <p id="video-description" style="color: #ccc;">Descrição do vídeo</p>
-        </div>
     </div>
-</div>
 
     <!-- Modal de Informações -->
     <div id="info-modal" class="modal hidden">
@@ -339,8 +341,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="player.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
-

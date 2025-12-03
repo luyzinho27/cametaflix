@@ -253,7 +253,7 @@ form h2 {
 .input-group input, .input-group textarea, .input-group select {
     width: 100%;
     padding: 15px;
-    background: rgba(255, 255, 255, 0.08);
+    /*background: rgba(255, 255, 255, 0.08);*/
     border: 2px solid rgba(255, 255, 255, 0.15);
     border-radius: var(--raio-borda-pequeno);
     color: var(--texto-principal);
@@ -1828,3 +1828,4 @@ button, input, textarea, select,
         border-color: var(--verde-principal);
     }
 }
+

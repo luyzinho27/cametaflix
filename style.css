@@ -256,7 +256,7 @@ form h2 {
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.15);
     border-radius: var(--raio-borda-pequeno);
-    color: var(--texto-principal);
+     /* color: var(--texto-principal);*/
     font-size: 16px;
     transition: var(--transicao-media);
     font-family: 'Roboto', sans-serif;
@@ -1828,5 +1828,6 @@ button, input, textarea, select,
         border-color: var(--verde-principal);
     }
 }
+
 
 

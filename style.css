@@ -1,4 +1,4 @@
-/* style.css - VERSÃO COMPLETA COM NOVA PALETA DE CORES */
+/* style.css - VERSÃO COMPLETA COM TODOS OS SERVIÇOS DE HOSPEDAGEM */
 :root {
     /* Cores principais fornecidas */
     --azul-principal: #000080;      /* Azul (faixa esquerda) */
@@ -26,6 +26,13 @@
     --amarelo-medio: #ffffb3;
     --amarelo-suave: rgba(255, 255, 153, 0.1);
     
+    /* Cores específicas para novos serviços */
+    --telegram-azul: #0088cc;
+    --facebook-azul: #4267B2;
+    --nitroflare-amarelo: #FFFF99;
+    --terabox-azul: #0088cc;
+    --fourshared-branco: #FFFFFF;
+    
     /* Cores de texto e fundo */
     --texto-principal: #FFFFFF;
     --texto-secundario: #E0E0E0;
@@ -35,6 +42,7 @@
     --fundo-medio: #12121E;
     --fundo-claro: #1A1A28;
     --fundo-card: #202030;
+    --fundo-darker: #05050A;
     
     /* Gradientes */
     --gradiente-azul: linear-gradient(135deg, var(--azul-principal) 0%, var(--azul-claro) 100%);
@@ -43,12 +51,16 @@
     --gradiente-amarelo: linear-gradient(135deg, var(--amarelo-detalhes) 0%, var(--amarelo-medio) 100%);
     --gradiente-overlay: linear-gradient(to top, rgba(10, 10, 20, 0.95), transparent);
     --gradiente-card: linear-gradient(145deg, var(--fundo-card) 0%, #252538 100%);
+    --gradiente-multicolor: linear-gradient(to right, var(--azul-principal), var(--vermelho-principal), var(--verde-principal));
+    --gradiente-azul-vermelho: linear-gradient(to right, var(--azul-principal), var(--vermelho-principal));
     
     /* Sombras */
     --sombra-pesada: 0 10px 30px rgba(0, 0, 0, 0.5);
     --sombra-media: 0 6px 20px rgba(0, 0, 0, 0.4);
     --sombra-leve: 0 3px 10px rgba(0, 0, 0, 0.3);
     --sombra-destaque: 0 0 20px rgba(255, 255, 153, 0.3);
+    --sombra-vermelha: 0 0 20px rgba(255, 0, 0, 0.3);
+    --sombra-azul: 0 0 20px rgba(0, 0, 128, 0.3);
     
     /* Bordas */
     --raio-borda: 12px;
@@ -105,6 +117,12 @@ body {
 @keyframes glow {
     0%, 100% { box-shadow: 0 0 5px var(--azul-principal); }
     50% { box-shadow: 0 0 20px var(--azul-claro); }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* Loading Screen */
@@ -167,12 +185,6 @@ body {
     padding: 20px;
     position: relative;
     overflow: hidden;
-}
-
-@keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
 }
 
 .login-container::before, .register-container::before {
@@ -256,7 +268,7 @@ form h2 {
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.15);
     border-radius: var(--raio-borda-pequeno);
-     /* color: var(--texto-principal);*/
+    color: var(--texto-principal);
     font-size: 16px;
     transition: var(--transicao-media);
     font-family: 'Roboto', sans-serif;
@@ -481,7 +493,7 @@ form h2 {
     align-items: flex-end;
     padding: 0 40px 80px;
     position: relative;
-    background: linear-gradient(to top, var(--fundo-escuro) 0%, transparent 60%), 
+    background: linear-gradient(to top, var(--fundo-darker) 0%, transparent 60%), 
                 radial-gradient(circle at 20% 80%, var(--azul-principal) 0%, transparent 40%),
                 radial-gradient(circle at 80% 20%, var(--vermelho-principal) 0%, transparent 40%);
     background-size: cover;
@@ -563,7 +575,7 @@ form h2 {
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(to right, transparent, var(--azul-principal), var(--vermelho-principal), var(--verde-principal), transparent);
+    background: var(--gradiente-multicolor);
 }
 
 .section-title {
@@ -614,7 +626,7 @@ form h2 {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(to right, var(--azul-principal), var(--vermelho-principal), var(--verde-principal));
+    background: var(--gradiente-multicolor);
     z-index: 2;
 }
 
@@ -759,7 +771,7 @@ form h2 {
     bottom: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(to top, rgba(10, 10, 20, 0.95), transparent);
+    background: var(--gradiente-overlay);
     padding: 20px;
     z-index: 5;
     transition: var(--transicao-media);
@@ -828,7 +840,7 @@ form h2 {
     height: 60px;
     background: var(--gradiente-vermelho);
     border: none;
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+    box-shadow: var(--sombra-vermelha);
 }
 
 .play-btn:hover {
@@ -868,7 +880,7 @@ form h2 {
     top: 0;
     left: 0;
     height: 100%;
-    background: linear-gradient(to right, var(--azul-principal), var(--vermelho-principal), var(--verde-principal));
+    background: var(--gradiente-multicolor);
     border-radius: 2px;
     width: 0%;
     transition: width 0.1s;
@@ -926,7 +938,7 @@ form h2 {
     width: 100%;
     height: 4px;
     -webkit-appearance: none;
-    background: linear-gradient(to right, var(--azul-principal), var(--vermelho-principal));
+    background: var(--gradiente-azul-vermelho);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
@@ -994,16 +1006,24 @@ form h2 {
     margin-bottom: 15px;
 }
 
-/* Iframes */
+/* Iframes para todos os serviços */
 .mega-iframe,
 .youtube-iframe,
 .gdrive-iframe,
 .archive-iframe,
+.terabox-iframe,
+.fourshared-iframe,
+.playbook-iframe,
 .generic-iframe {
     width: 100%;
     height: 100%;
     border: none;
     filter: brightness(0.95) contrast(1.1);
+}
+
+/* Ajustes específicos para alguns serviços */
+.playbook-iframe {
+    min-width: 500px; /* Facebook player precisa de largura mínima */
 }
 
 /* Ajustes para iframes dentro do player */
@@ -1047,7 +1067,7 @@ form h2 {
     background: var(--fundo-escuro);
     border: 3px solid var(--azul-principal);
     padding: 0;
-    box-shadow: 0 0 50px rgba(0, 0, 128, 0.5);
+    box-shadow: var(--sombra-azul);
 }
 
 #video-modal .close-modal {
@@ -1073,7 +1093,7 @@ form h2 {
     background: var(--vermelho-principal);
     border-color: var(--texto-principal);
     transform: rotate(90deg) scale(1.1);
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    box-shadow: var(--sombra-vermelha);
 }
 
 /* Modal */
@@ -1204,7 +1224,7 @@ form h2 {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(to right, var(--azul-principal), var(--vermelho-principal), var(--verde-principal));
+    background: var(--gradiente-multicolor);
 }
 
 .admin-panel h2 {
@@ -1249,7 +1269,7 @@ form h2 {
     background: rgba(255, 0, 0, 0.1);
     border-color: var(--vermelho-principal);
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(255, 0, 0, 0.2);
+    box-shadow: var(--sombra-vermelha);
 }
 
 .admin-btn.active {
@@ -1475,7 +1495,7 @@ form h2 {
     border-color: rgba(255, 255, 153, 0.3);
 }
 
-/* Instruções de Fonte */
+/* Instruções de Fonte para Novos Serviços */
 .source-instructions {
     background: rgba(255, 0, 0, 0.1);
     padding: 15px;
@@ -1519,6 +1539,27 @@ form h2 {
     position: absolute;
     left: -20px;
     font-size: 10px;
+}
+
+/* Estilos específicos para conteúdo de novos serviços */
+.nitroflare-content {
+    background: linear-gradient(135deg, #1a1a2a 0%, #0a0a1a 100%) !important;
+}
+
+.telegram-content {
+    background: linear-gradient(135deg, var(--azul-principal) 0%, var(--azul-escuro) 100%) !important;
+}
+
+.terabox-content {
+    background: linear-gradient(135deg, var(--terabox-azul) 0%, #006699 100%) !important;
+}
+
+.fourshared-content {
+    background: linear-gradient(135deg, #333333 0%, #666666 100%) !important;
+}
+
+.playbook-content {
+    background: linear-gradient(135deg, var(--facebook-azul) 0%, #2d4373 100%) !important;
 }
 
 /* Responsividade */
@@ -1624,6 +1665,11 @@ form h2 {
     .control-buttons {
         justify-content: center;
     }
+    
+    /* Ajustes para iframes em mobile */
+    .playbook-iframe {
+        min-width: 300px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1680,7 +1726,7 @@ form h2 {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(to bottom, var(--azul-principal), var(--vermelho-principal), var(--verde-principal));
+    background: var(--gradiente-multicolor);
     border-radius: 5px;
     border: 2px solid var(--fundo-medio);
 }
@@ -1717,59 +1763,75 @@ form h2 {
     font-size: 0.9rem;
 }
 
-/* Estilos para grid de opções do Mega.nz */
-.mega-options-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    width: 100%;
-    max-width: 800px;
+/* Estilos para serviços sem player nativo */
+.no-native-player {
+    background: linear-gradient(135deg, var(--azul-escuro) 0%, var(--fundo-escuro) 100%);
+    border: 2px solid var(--amarelo-detalhes);
 }
 
-.mega-option-btn {
-    padding: 15px;
-    border: none;
-    border-radius: var(--raio-borda-pequeno);
-    color: var(--texto-principal);
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    transition: var(--transicao-media);
-    background: rgba(0, 0, 128, 0.7);
-    border: 2px solid rgba(255, 255, 153, 0.3);
+.no-native-player h2 {
+    color: var(--amarelo-detalhes);
 }
 
-.mega-option-btn:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--sombra-destaque);
-    border-color: var(--amarelo-detalhes);
-    background: rgba(255, 0, 0, 0.7);
+/* Botões específicos para serviços */
+.btn-nitroflare {
+    background: linear-gradient(135deg, #FF0000 0%, #ff3333 100%);
 }
 
-/* Efeitos de brilho para elementos importantes */
-.glow-effect {
-    position: relative;
+.btn-nitroflare:hover {
+    background: linear-gradient(135deg, #ff3333 0%, #FF0000 100%);
 }
 
-.glow-effect::after {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, var(--azul-principal), var(--vermelho-principal), var(--verde-principal), var(--amarelo-detalhes));
-    border-radius: inherit;
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s;
+.btn-telegram {
+    background: linear-gradient(135deg, var(--telegram-azul) 0%, #006699 100%);
 }
 
-.glow-effect:hover::after {
-    opacity: 1;
-    animation: glow 1.5s infinite;
+.btn-telegram:hover {
+    background: linear-gradient(135deg, #006699 0%, var(--telegram-azul) 100%);
+}
+
+.btn-terabox {
+    background: linear-gradient(135deg, var(--terabox-azul) 0%, #006699 100%);
+}
+
+.btn-terabox:hover {
+    background: linear-gradient(135deg, #006699 0%, var(--terabox-azul) 100%);
+}
+
+.btn-fourshared {
+    background: linear-gradient(135deg, #333333 0%, #666666 100%);
+}
+
+.btn-fourshared:hover {
+    background: linear-gradient(135deg, #666666 0%, #333333 100%);
+}
+
+.btn-playbook {
+    background: linear-gradient(135deg, var(--facebook-azul) 0%, #2d4373 100%);
+}
+
+.btn-playbook:hover {
+    background: linear-gradient(135deg, #2d4373 0%, var(--facebook-azul) 100%);
+}
+
+/* Efeitos de brilho para serviços específicos */
+.glow-nitroflare {
+    box-shadow: 0 0 15px rgba(255, 255, 153, 0.5);
+}
+
+.glow-telegram {
+    box-shadow: 0 0 15px rgba(0, 136, 204, 0.5);
+}
+
+.glow-terabox {
+    box-shadow: 0 0 15px rgba(0, 136, 204, 0.5);
+}
+
+/* Garantir que iframes não mostrem controles nativos */
+.terabox-iframe::-webkit-media-controls,
+.fourshared-iframe::-webkit-media-controls,
+.playbook-iframe::-webkit-media-controls {
+    display: none !important;
 }
 
 /* Textos sempre legíveis */
@@ -1828,6 +1890,3 @@ button, input, textarea, select,
         border-color: var(--verde-principal);
     }
 }
-
-
-
